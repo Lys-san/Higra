@@ -231,6 +231,11 @@ namespace hg {
 
         /**
         * This is the new 3D Khalimsky function.
+        *
+        * @param ximage    a container for image values
+        * @param embedding the associated embedding grid
+        * 
+        * @return a projection of the image in the Khalimsky grid
         */
         template<typename T, typename value_type=typename T::value_type>
         auto interpolate_plain_map_khalimsky_3d(const xt::xexpression<T> &ximage, const embedding_grid_3d &embedding) {
@@ -240,52 +245,59 @@ namespace hg {
             size_t z = embedding.shape()[0];
 
             // size of cubical complex is doubled in each dimension to handle vertices and edges
-            size_t x2 = x * 2 - 1;
-            size_t y2 = y * 2 - 1;
-            size_t z2 = z * 2 - 1;
+            size_t x2 = std::max((size_t) 2, x * 2 - 1);
+            size_t y2 = std::max((size_t) 2, y * 2 - 1);
+            size_t z2 = std::max((size_t) 2, z * 2 - 1);
 
-            array_3d<value_type> plain_map = array_3d<value_type>::from_shape({x2 * y2 * z2, 3});
+
+
+            array_3d<value_type> plain_map = array_3d<value_type>::from_shape({x2, y2, z2}); // set valued map
             const auto image3d = xt::reshape_view(image, {x, y, z}); // our original 3D image
             auto plain_map3d = xt::reshape_view(plain_map, {x2, y2, z2}); // the 3D associated map
 
+            xt::noalias(xt::view(plain_map3d, xt::all(), xt::all(), xt::all())) = 9; // report values in 1/2H space
+
+
             // 3-face (cube)
-            xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(0, z2, 2))) = image3d; // report values in 1/2
-                        
+            xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(0, z2, 2))) = image3d; // report values in 1/2H space
+            xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2))) = image3d; // report values in 1/2H space
+
             // 1-face (vertex)
             // on x
             xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(0, y2, 2), xt::range(0, z2, 2))) =
                     xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::all()),
                                 xt::view(image3d, xt::range(1, x), xt::all(), xt::all()));
-            xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2))) =
-                    xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::all()),
-                                xt::view(image3d, xt::range(1, x), xt::all(), xt::all()));
 
+
+            xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2))) =
+                    xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::range(0, std::max(z - 1, (size_t) 1))),
+                                xt::view(image3d, xt::range(1, x), xt::all(), xt::range(0, std::max(z - 1, (size_t) 1))));
             // on y
             xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(1, y2, 2), xt::range(0, z2, 2))) =
                     xt::minimum(xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::all()),
                                 xt::view(image3d, xt::all(), xt::range(1, y), xt::all()));
             xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(1, y2, 2), xt::range(1, z2, 2))) =
-                    xt::maximum(xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::all()),
-                                xt::view(image3d, xt::all(), xt::range(1, y), xt::all()));
+                    xt::maximum(xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::range(0, std::max(z - 1, (size_t) 1))),
+                                xt::view(image3d, xt::all(), xt::range(1, y), xt::range(0, std::max(z - 1, (size_t) 1))));
             // on z
             xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2))) =
-                    xt::minimum(xt::view(image3d, xt::all(), xt::all(), xt::range(0, z - 1)),
-                                xt::view(image3d, xt::all(), xt::all(), xt::range(1, z)));
+                    xt::minimum(xt::view(image3d, xt::all(), xt::all(), xt::range(0, std::max(z - 1, (size_t) 1))),
+                                xt::view(image3d, xt::all(), xt::all(), xt::range(0, std::max(z - 1, (size_t) 1))));
             
             // 0-face (edge)
             xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(1, y2, 2), xt::range(0, z2, 2))) =
                     xt::minimum(
-                            xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::range(0,  z - 1))),
-                            xt::minimum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1)),
-                                        xt::view(image3d, xt::range(1, x), xt::range(1, y))));
+                            xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::all()),
+                                        xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::all())),
+                            xt::minimum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::all()),
+                                        xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::all())));
 
             xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(1, y2, 2), xt::range(1, z2, 2))) =
                     xt::maximum(
-                            xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::range(0,  z - 1))),
-                            xt::maximum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1)),
-                                        xt::view(image3d, xt::range(1, x), xt::range(1, y))));
+                            xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::range(0, std::max(z - 1, (size_t) 1))),
+                                        xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::range(0,  std::max(z - 1, (size_t) 1)))),
+                            xt::maximum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::range(0, std::max(z - 1, (size_t) 1))),
+                                        xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::range(0, std::max(z - 1, (size_t) 1)))));
 
             return plain_map;
         }
