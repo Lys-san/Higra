@@ -85,56 +85,27 @@ namespace tree_of_shapes {
     }
 
     TEST_CASE("test interpolate_plain_map_khalimsky_3d", "[tree_of_shapes]") {    
+        array_3d<int> image_3d
+                {{{0, 1}, {0, 1}, {0, 0}},
+                 {{1, 1}, {1, 1}, {1, 1}},
+                 {{1, 0}, {1, 0}, {1, 0}}};
 
-        // apply on 2D should give same result as 2d function
-        array_1d<int> image_2d{1, 1, 1, 1, 1, 1,
-                            1, 0, 0, 3, 3, 1,
-                            1, 0, 1, 1, 3, 1,
-                            1, 0, 0, 3, 3, 1,
-                            1, 1, 1, 1, 1, 1};
-
-        auto result = hg::tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(image_2d, {1, 5, 6});
-
-        array_3d<int> expected_result_2d
-                {{{1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}},
-                 {{1, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 3}, {1, 3}, {1, 3}, {1, 3}, {1, 3}, {1, 1}},
-                 {{1, 1}, {0, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 3}, {3, 3}, {3, 3}, {3, 3}, {1, 3}, {1, 1}},
-                 {{1, 1}, {0, 1}, {0, 0}, {0, 1}, {0, 1}, {0, 3}, {1, 3}, {1, 3}, {3, 3}, {1, 3}, {1, 1}},
-                 {{1, 1}, {0, 1}, {0, 0}, {0, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 3}, {3, 3}, {1, 3}, {1, 1}},
-                 {{1, 1}, {0, 1}, {0, 0}, {0, 1}, {0, 1}, {0, 3}, {1, 3}, {1, 3}, {3, 3}, {1, 3}, {1, 1}},
-                 {{1, 1}, {0, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 3}, {3, 3}, {3, 3}, {3, 3}, {1, 3}, {1, 1}},
-                 {{1, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 3}, {1, 3}, {1, 3}, {1, 3}, {1, 3}, {1, 1}},
-                 {{1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}}};
-
-        INFO("Khalimsky map is : " << xt::reshape_view(result,
-            {expected_result_2d.shape()[0],
-             expected_result_2d.shape()[1],
-             expected_result_2d.shape()[2]}));
-
-        REQUIRE((result == xt::reshape_view(expected_result_2d, {result.shape()[0], result.shape()[1]})));
+        // array_3d<int> expected_result_3d 
+        //     {{{0, 1, 1}, {0, 1, 1}, {0, 1, 1}, {0, 0, 0}, {0, 0, 0}},
+        //      {{0, 1, 1}, {0, 1, 1}, {0, 1, 1}, {0, 1, 0}, {0, 1, 0}},
+        //      {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}},
+        //      {{1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}},
+        //      {{1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}}}
 
 
-
-        // array_3d<int> image_3d
-        //         {{{0, 1}, {0, 1}, {0, 0}},
-        //          {{1, 1}, {1, 1}, {1, 1}},
-        //          {{1, 0}, {1, 0}, {1, 0}}};
-
-        // // array_3d<int> expected_result_3d 
-        // //     {{{0, 1, 1}, {0, 1, 1}, {0, 1, 1}, {0, 0, 0}, {0, 0, 0}},
-        // //      {{0, 1, 1}, {0, 1, 1}, {0, 1, 1}, {0, 1, 0}, {0, 1, 0}},
-        // //      {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}},
-        // //      {{1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}},
-        // //      {{1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}}}
+        array_3d<int> expected_result_3d {{{0, 0, 0}}}; // false so we have the display
 
 
-        // array_3d<int> expected_result_3d {{{0, 0, 0}}}; // false so we have the display
+        auto result = hg::tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(image_3d, {2, 3, 3});
 
-        // auto result = hg::tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(image_3d, {2, 3, 3});
+        INFO("Khalimsky map is : " << result);
 
-        // INFO("Khalimsky map is : " << result);
-
-        // REQUIRE((result == xt::reshape_view(expected_result_3d, {result.shape()[0], result.shape()[1]})));
+        REQUIRE((result == xt::reshape_view(expected_result_3d, {result.shape()[0], result.shape()[1]})));
     }
 
     TEST_CASE("test sort_vertices_tree_of_shapes small integers", "[tree_of_shapes]") {

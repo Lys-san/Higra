@@ -652,6 +652,168 @@ namespace hg {
                                                                                       exterior_vertex);
                 return process_sorted_pixels(graph, res_sort.first, res_sort.second);
             }
+        }
+    }
+
+
+    /** This is the new 3D ToS function. */
+    template<typename T>
+    auto component_tree_tree_of_shapes_image2d(const xt::xexpression<T> &ximage,
+                                               tos_padding padding = tos_padding::mean,
+                                               bool original_size = true,
+                                               bool immersion = true,
+                                               index_t exterior_vertex = 0) {
+        HG_TRACE();
+        auto &image = ximage.derived_cast();
+        hg_assert(image.dimension() == 3, "image must be a 3d array");
+        embedding_grid_3d embedding(image.shape());
+        auto shape = embedding.shape();
+        size_t z = shape[0];
+        size_t y = shape[1];
+        size_t x = shape[2]; 
+        auto vertex_weights = xt::flatten(image);
+        using value_type = typename T::value_type;
+
+        size_t rx;
+        size_t ry;
+        size_t rz;
+
+        array_3d<value_type> cooked_vertex_values;
+
+        auto do_padding = [&padding, &z, &y, &x](const auto &image) {
+            value_type pad_value;
+            switch (padding) {
+                case tos_padding::zero:
+                    pad_value = 0;
+                    break;
+                case tos_padding::mean: {
+                    auto tmp = xt::sum(xt::view(image, 0, xt::all()))() +
+                               xt::sum(xt::view(image, h - 1, xt::all()))();
+                    if (h > 2) {
+                        tmp += xt::sum(xt::view(image, xt::range(1, h - 1), 0))() +
+                               xt::sum(xt::view(image, xt::range(1, h - 1), w - 1))();
+                    }
+                    pad_value = (value_type) (tmp / ((std::max)(2.0 * (w + h) - 4, 1.0)));
+                    break;
+                }
+                case none:
+                default:
+                    throw std::runtime_error("Incorrect padding value.");
+            }
+            array_1d<value_type> padded_vertices = array_1d<value_type>::from_shape({(w + 2) * (h + 2)});
+            auto padded_image = xt::reshape_view(padded_vertices, {h + 2, w + 2});
+
+            xt::noalias(xt::view(padded_image, xt::range(1, h + 1), xt::range(1, w + 1))) = image;
+            xt::view(padded_image, 0, xt::all()) = pad_value;
+            xt::view(padded_image, h + 1, xt::all()) = pad_value;
+            xt::view(padded_image, xt::all(), 0) = pad_value;
+            xt::view(padded_image, xt::all(), w + 1) = pad_value;
+            return padded_vertices;
+        };
+
+        auto process_sorted_pixels = [&original_size, &padding, &rh, &rw, &immersion](auto &graph,
+                                                                                      auto &sorted_vertex_indices,
+                                                                                      auto &enqueued_levels) {
+            auto res_tree = component_tree_internal::tree_from_sorted_vertices(graph, enqueued_levels,
+                                                                               sorted_vertex_indices);
+            auto &tree = res_tree.tree;
+            auto &altitudes = res_tree.altitudes;
+
+            if (!original_size || (!immersion && padding == tos_padding::none)) {
+                return res_tree;
+            }
+
+            array_1d<bool> deleted_vertices({num_leaves(res_tree.tree)}, true);
+            auto deleted = xt::reshape_view(deleted_vertices, {rz, ry, rx});
+            if (immersion) {
+                if (padding != tos_padding::none) {
+                    xt::view(deleted, xt::range(2, rh - 2, 2), xt::range(2, rw - 2, 2)) = false;
+                } else {
+                    xt::view(deleted, xt::range(0, rh, 2), xt::range(0, rw, 2)) = false;
+                }
+            } else {
+                if (padding != tos_padding::none) {
+                    xt::view(deleted, xt::range(1, rh - 1), xt::range(1, rw - 1)) = false;
+                } // else handled by bypass if on top
+            }
+
+            auto all_deleted = accumulate_sequential(tree, deleted_vertices, accumulator_min());
+
+            auto stree = simplify_tree(tree, all_deleted, true);
+            array_1d<value_type> saltitudes = xt::index_view(altitudes, stree.node_map);
+            return make_node_weighted_tree(std::move(stree.tree), std::move(saltitudes));
+        };
+
+        if (immersion) {
+            if (padding != tos_padding::none) {
+
+
+                auto cooked_vertex_values =
+                        tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(
+                                do_padding(image),
+                                {(index_t) (z + 2), (index_t) (y + 2), index_t (x + 2)});
+                rz = (z + 2) * 2 - 1;
+                ry = (y + 2) * 2 - 1;
+                rx = (x + 2) * 2 - 1;
+
+                // 6 adjacency implicit graph
+                array_3d<int> mask {{{0, 0, 0}, {0, 1, 0}, {0, 0, 0}},
+                                    {{0, 1, 0}, {1, 0, 1}, {0, 1, 0}},
+                                    {{0, 0, 0}, {0, 1, 0}, {0, 0, 0}}};
+
+                auto neighbours = mask_2_neighbours(mask)
+                auto graph = get_nd_regular_implicit_graph({(index_t) (rz), (index_t) (ry), index_t (rx)}, neighbours)
+
+                auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, cooked_vertex_values,
+                                                                                      exterior_vertex);
+                return process_sorted_pixels(graph, res_sort.first, res_sort.second);
+            } else {
+                auto cooked_vertex_values =
+                        tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(
+                                vertex_weights,
+                                embedding);
+                rz = z * 2 - 1;
+                ry = y * 2 - 1;
+                rx = x * 2 - 1;
+
+                // 6 adjacency implicit graph
+                array_3d<int> mask {{{0, 0, 0}, {0, 1, 0}, {0, 0, 0}},
+                                    {{0, 1, 0}, {1, 0, 1}, {0, 1, 0}},
+                                    {{0, 0, 0}, {0, 1, 0}, {0, 0, 0}}};
+
+                auto neighbours = mask_2_neighbours(mask)
+                auto graph = get_nd_regular_implicit_graph({(index_t) (rz), (index_t) (ry), index_t (rx)}, neighbours)
+                
+                auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, cooked_vertex_values,
+                                                                                      exterior_vertex);
+                return process_sorted_pixels(graph, res_sort.first, res_sort.second);
+            }
+        } else {
+            if (padding != tos_padding::none) {
+                auto padded_vertices = do_padding(image);
+
+                rh = h + 2;
+                rw = w + 2;
+                auto graph = get_4_adjacency_implicit_graph({(index_t) rh, (index_t) rw});
+
+                // clearly not optimal
+                array_2d<value_type> plain_map = array_2d<value_type>::from_shape({rh * rw, 2});
+                xt::noalias(xt::view(plain_map, xt::all(), 0)) = padded_vertices;
+                xt::noalias(xt::view(plain_map, xt::all(), 1)) = padded_vertices;
+                auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, plain_map,
+                                                                                      exterior_vertex);
+                return process_sorted_pixels(graph, res_sort.first, res_sort.second);
+            } else {
+                rh = h;
+                rw = w;
+                auto graph = get_4_adjacency_implicit_graph({(index_t) rh, (index_t) rw});
+                array_2d<value_type> plain_map = array_2d<value_type>::from_shape({rh * rw, 2});
+                xt::noalias(xt::view(plain_map, xt::all(), 0)) = xt::ravel(image);
+                xt::noalias(xt::view(plain_map, xt::all(), 1)) = xt::ravel(image);
+                auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, plain_map,
+                                                                                      exterior_vertex);
+                return process_sorted_pixels(graph, res_sort.first, res_sort.second);
+            }
 
         }
 
