@@ -244,7 +244,7 @@ namespace hg {
             size_t y = embedding.shape()[1];
             size_t z = embedding.shape()[0];
 
-            // size of cubical complex is doubled in each dimension to handle vertices and edges
+            // size of cubical complex is doubled in each dimension
             size_t x2 = x * 2 - 1;
             size_t y2 = y * 2 - 1;
             size_t z2 = z * 2 - 1;
@@ -656,9 +656,13 @@ namespace hg {
     }
 
 
-    /** This is the new 3D ToS function. */
+    /**
+     * An adaptation of the tree of shapes for 3D images.
+     * 
+     *  Usage is the same as the component_tree_tree_of_shapes_image2d function.
+     */
     template<typename T>
-    auto component_tree_tree_of_shapes_image2d(const xt::xexpression<T> &ximage,
+    auto component_tree_tree_of_shapes_image3d(const xt::xexpression<T> &ximage,
                                                tos_padding padding = tos_padding::mean,
                                                bool original_size = true,
                                                bool immersion = true,
@@ -680,6 +684,7 @@ namespace hg {
 
         array_3d<value_type> cooked_vertex_values;
 
+        // function to add padding to the image
         auto do_padding = [&padding, &z, &y, &x](const auto &image) {
             value_type pad_value;
             switch (padding) {
@@ -687,27 +692,43 @@ namespace hg {
                     pad_value = 0;
                     break;
                 case tos_padding::mean: {
-                    auto tmp = xt::sum(xt::view(image, 0, xt::all()))() +
-                               xt::sum(xt::view(image, h - 1, xt::all()))();
-                    if (h > 2) {
-                        tmp += xt::sum(xt::view(image, xt::range(1, h - 1), 0))() +
-                               xt::sum(xt::view(image, xt::range(1, h - 1), w - 1))();
-                    }
-                    pad_value = (value_type) (tmp / ((std::max)(2.0 * (w + h) - 4, 1.0)));
+                    // compute mean of all boundary pixels
+                    auto tmp = xt::sum(xt::view(image, 0        , 0        , xt::all()))() +
+                               xt::sum(xt::view(image, 0        , y-1      , xt::all()))() +
+                               xt::sum(xt::view(image, 0        , xt::all(), 0        ))() +
+                               xt::sum(xt::view(image, 0        , xt::all(), z-1      ))() +
+                               xt::sum(xt::view(image, x-1      , 0        , xt::all()))() +
+                               xt::sum(xt::view(image, x-1      , y-1      , xt::all()))() +
+                               xt::sum(xt::view(image, x-1      , xt::all(), 0        ))() +
+                               xt::sum(xt::view(image, x-1      , xt::all(), z-1      ))() +
+                               xt::sum(xt::view(image, xt::all(), 0        , 0        ))() +
+                               xt::sum(xt::view(image, xt::all(), y-1      , 0        ))() +
+                               xt::sum(xt::view(image, xt::all(), y-1      , z-1      ))() +
+                               xt::sum(xt::view(image, xt::all(), 0        , z-1      ))();
+
+                    pad_value = (value_type) (tmp / ((std::max)(4.0 * (x + y + z) - 8, 1.0)));
                     break;
                 }
                 case none:
                 default:
                     throw std::runtime_error("Incorrect padding value.");
             }
-            array_1d<value_type> padded_vertices = array_1d<value_type>::from_shape({(w + 2) * (h + 2)});
-            auto padded_image = xt::reshape_view(padded_vertices, {h + 2, w + 2});
+            array_1d<value_type> padded_vertices = array_1d<value_type>::from_shape({(x + 2) * (y + 2) * (z + 1)}); // plain 1D array 
+            auto padded_image = xt::reshape_view(padded_vertices, {x + 2, y + 2, z + 2}); // construct padding image with dimensions += 2
 
-            xt::noalias(xt::view(padded_image, xt::range(1, h + 1), xt::range(1, w + 1))) = image;
-            xt::view(padded_image, 0, xt::all()) = pad_value;
-            xt::view(padded_image, h + 1, xt::all()) = pad_value;
-            xt::view(padded_image, xt::all(), 0) = pad_value;
-            xt::view(padded_image, xt::all(), w + 1) = pad_value;
+            // fill padded image with corresponding values
+            xt::noalias(xt::view(padded_image, xt::range(1, x + 1), xt::range(1, y + 1), xt::range(1, z + 1))) = image; // put original in center of padded one
+            xt::view(padded_image, 0        , xt::all(), 0        ) = pad_value;
+            xt::view(padded_image, x + 1    , xt::all(), 0        ) = pad_value;
+            xt::view(padded_image, xt::all(), 0        , 0        ) = pad_value;
+            xt::view(padded_image, xt::all(), y + 1    , 0        ) = pad_value;
+            xt::view(padded_image, 0        , xt::all(), z + 1    ) = pad_value;
+            xt::view(padded_image, x + 1    , xt::all(), z + 1    ) = pad_value;
+            xt::view(padded_image, xt::all(), 0        , z + 1    ) = pad_value;
+            xt::view(padded_image, xt::all(), y + 1    , z + 1    ) = pad_value;
+            xt::view(padded_image, 0        , y + 1    , xt::all()) = pad_value;
+            xt::view(padded_image, x + 1    , y + 1    , xt::all()) = pad_value;
+
             return padded_vertices;
         };
 
