@@ -678,7 +678,7 @@ namespace hg {
         auto vertex_weights = xt::flatten(image);
         using value_type = typename T::value_type;
 
-        // TODO : rx, ry, rz correspond to ?
+        // dimensions of the image in the khalimsky grid ?
         size_t rx;
         size_t ry;
         size_t rz;
@@ -735,7 +735,7 @@ namespace hg {
             return padded_vertices;
         };
 
-        // function to ...?
+        // function to simplify the image ?
         auto process_sorted_pixels = [&original_size, &padding, &rh, &rw, &immersion](auto &graph,
                                                                                       auto &sorted_vertex_indices,
                                                                                       auto &enqueued_levels) {
@@ -778,16 +778,16 @@ namespace hg {
             return make_node_weighted_tree(std::move(stree.tree), std::move(saltitudes));
         };
 
+        // construct graph according to given parameters (immersion, padding)
         if (immersion) {
             if (padding != tos_padding::none) {
-
-
+                // construct image in the khalimsky map
                 auto cooked_vertex_values =
                         tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(
                                 do_padding(image),
                                 {(index_t) (z + 2), (index_t) (y + 2), index_t (x + 2)});
                 
-                // dimensions of padded image in khalimsly map
+                // dimensions of new image
                 rz = (z + 2) * 2 - 1;
                 ry = (y + 2) * 2 - 1;
                 rx = (x + 2) * 2 - 1;
@@ -798,7 +798,7 @@ namespace hg {
                                     {{0, 0, 0}, {0, 1, 0}, {0, 0, 0}}};
 
                 auto neighbours = mask_2_neighbours(mask)
-                auto graph = get_nd_regular_implicit_graph({(index_t) (rz), (index_t) (ry), index_t (rx)}, neighbours)
+                auto graph = get_nd_regular_implicit_graph({(index_t) (rx), (index_t) (ry), index_t (rz)}, neighbours)
 
                 auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, cooked_vertex_values,
                                                                                       exterior_vertex);
@@ -818,7 +818,7 @@ namespace hg {
                                     {{0, 0, 0}, {0, 1, 0}, {0, 0, 0}}};
 
                 auto neighbours = mask_2_neighbours(mask)
-                auto graph = get_nd_regular_implicit_graph({(index_t) (rz), (index_t) (ry), index_t (rx)}, neighbours)
+                auto graph = get_nd_regular_implicit_graph({(index_t) (rx), (index_t) (ry), index_t (rz)}, neighbours)
                 
                 auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, cooked_vertex_values,
                                                                                       exterior_vertex);
@@ -828,8 +828,9 @@ namespace hg {
             if (padding != tos_padding::none) {
                 auto padded_vertices = do_padding(image);
 
-                rh = h + 2;
-                rw = w + 2;
+                rz = z + 2;
+                ry = y + 2;
+                rx = x + 1;
 
                 // 6 adjacency implicit graph
                 array_3d<int> mask {{{0, 0, 0}, {0, 1, 0}, {0, 0, 0}},
@@ -839,7 +840,7 @@ namespace hg {
                 auto neighbours = mask_2_neighbours(mask)
                 auto graph = get_nd_regular_implicit_graph({(index_t) (rz), (index_t) (ry), index_t (rx)}, neighbours)
 
-                // clearly not optimal
+                // (original comment) clearly not optimal
                 array_2d<value_type> plain_map = array_2d<value_type>::from_shape({rh * rw, 2});
                 xt::noalias(xt::view(plain_map, xt::all(), 0)) = padded_vertices;
                 xt::noalias(xt::view(plain_map, xt::all(), 1)) = padded_vertices;
@@ -847,8 +848,9 @@ namespace hg {
                                                                                       exterior_vertex);
                 return process_sorted_pixels(graph, res_sort.first, res_sort.second);
             } else {
-                rh = h;
-                rw = w;
+                rz = z;
+                ry = y;
+                rx = x;
 
                 // 6 adjacency implicit graph
                 array_3d<int> mask {{{0, 0, 0}, {0, 1, 0}, {0, 0, 0}},
@@ -857,7 +859,7 @@ namespace hg {
 
                 auto neighbours = mask_2_neighbours(mask)
                 auto graph = get_nd_regular_implicit_graph({(index_t) (rz), (index_t) (ry), index_t (rx)}, neighbours)
-                
+
                 array_2d<value_type> plain_map = array_2d<value_type>::from_shape({rh * rw, 2});
                 xt::noalias(xt::view(plain_map, xt::all(), 0)) = xt::ravel(image);
                 xt::noalias(xt::view(plain_map, xt::all(), 1)) = xt::ravel(image);
