@@ -546,7 +546,7 @@ namespace hg {
                     auto tmp = xt::sum(xt::view(image, 0, xt::all()))() +
                                xt::sum(xt::view(image, h - 1, xt::all()))();
                     if (h > 2) {
-                        tmp += xt::sum(xt::view(image, xt::range(1, h - 1), 0))() +
+                        tmp += xt::sum(xt::view(image, xt::range(1, h - 1), 0))() +  // TODO : shouldn't it be h - 2 ?
                                xt::sum(xt::view(image, xt::range(1, h - 1), w - 1))();
                     }
                     pad_value = (value_type) (tmp / ((std::max)(2.0 * (w + h) - 4, 1.0)));
@@ -678,6 +678,7 @@ namespace hg {
         auto vertex_weights = xt::flatten(image);
         using value_type = typename T::value_type;
 
+        // TODO : rx, ry, rz correspond to ?
         size_t rx;
         size_t ry;
         size_t rz;
@@ -693,18 +694,20 @@ namespace hg {
                     break;
                 case tos_padding::mean: {
                     // compute mean of all boundary pixels
-                    auto tmp = xt::sum(xt::view(image, 0        , 0        , xt::all()))() +
-                               xt::sum(xt::view(image, 0        , y-1      , xt::all()))() +
-                               xt::sum(xt::view(image, 0        , xt::all(), 0        ))() +
-                               xt::sum(xt::view(image, 0        , xt::all(), z-1      ))() +
-                               xt::sum(xt::view(image, x-1      , 0        , xt::all()))() +
-                               xt::sum(xt::view(image, x-1      , y-1      , xt::all()))() +
-                               xt::sum(xt::view(image, x-1      , xt::all(), 0        ))() +
-                               xt::sum(xt::view(image, x-1      , xt::all(), z-1      ))() +
-                               xt::sum(xt::view(image, xt::all(), 0        , 0        ))() +
-                               xt::sum(xt::view(image, xt::all(), y-1      , 0        ))() +
-                               xt::sum(xt::view(image, xt::all(), y-1      , z-1      ))() +
-                               xt::sum(xt::view(image, xt::all(), 0        , z-1      ))();
+
+                    // TODO : check image dimensions to avoid out of range indexes
+                    auto tmp = xt::sum(xt::view(image, 0                  , 0                  , xt::all()))() +
+                               xt::sum(xt::view(image, 0                  , y-1                , xt::all()))() +
+                               xt::sum(xt::view(image, 0                  , xt::range(1, y - 2), 0        ))() +
+                               xt::sum(xt::view(image, 0                  , xt::range(1, y - 2), z-1      ))() +
+                               xt::sum(xt::view(image, x-1                , 0                  , xt::all()))() +
+                               xt::sum(xt::view(image, x-1                , y-1                , xt::all()))() +
+                               xt::sum(xt::view(image, x-1                , xt::range(1, y - 2), 0        ))() +
+                               xt::sum(xt::view(image, x-1                , xt::range(1, y - 2), z-1      ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 2), 0                  , 0        ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 2), y-1                , 0        ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 2), y-1                , z-1      ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 2), 0                  , z-1      ))();
 
                     pad_value = (value_type) (tmp / ((std::max)(4.0 * (x + y + z) - 8, 1.0)));
                     break;
@@ -713,7 +716,7 @@ namespace hg {
                 default:
                     throw std::runtime_error("Incorrect padding value.");
             }
-            array_1d<value_type> padded_vertices = array_1d<value_type>::from_shape({(x + 2) * (y + 2) * (z + 1)}); // plain 1D array 
+            array_1d<value_type> padded_vertices = array_1d<value_type>::from_shape({(x + 2) * (y + 2) * (z + 2)}); // plain 1D array 
             auto padded_image = xt::reshape_view(padded_vertices, {x + 2, y + 2, z + 2}); // construct padding image with dimensions += 2
 
             // fill padded image with corresponding values
@@ -732,34 +735,44 @@ namespace hg {
             return padded_vertices;
         };
 
+        // function to ...?
         auto process_sorted_pixels = [&original_size, &padding, &rh, &rw, &immersion](auto &graph,
                                                                                       auto &sorted_vertex_indices,
                                                                                       auto &enqueued_levels) {
+            // firts, construct tree from sorted vertices
             auto res_tree = component_tree_internal::tree_from_sorted_vertices(graph, enqueued_levels,
                                                                                sorted_vertex_indices);
             auto &tree = res_tree.tree;
             auto &altitudes = res_tree.altitudes;
 
+            // TODO : what is immersion boolean ?
             if (!original_size || (!immersion && padding == tos_padding::none)) {
                 return res_tree;
             }
 
-            array_1d<bool> deleted_vertices({num_leaves(res_tree.tree)}, true);
-            auto deleted = xt::reshape_view(deleted_vertices, {rz, ry, rx});
+            // if original_size is true, all the nodes corresponding to pixels
+            // not belonging to the original image are removed
+            array_1d<bool> deleted_vertices({num_leaves(res_tree.tree)}, true); // aray of bool for each leaf
+            auto deleted = xt::reshape_view(deleted_vertices, {rz, ry, rx});    // reshape with image (?) shape
             if (immersion) {
                 if (padding != tos_padding::none) {
-                    xt::view(deleted, xt::range(2, rh - 2, 2), xt::range(2, rw - 2, 2)) = false;
+                    // work without the padding
+                    xt::view(deleted, xt::range(2, rx - 2, 2), xt::range(2, ry - 2, 2), xt::range(2, rz - 2, 2)) = false;
                 } else {
-                    xt::view(deleted, xt::range(0, rh, 2), xt::range(0, rw, 2)) = false;
+                    // work with whole image
+                    xt::view(deleted, xt::range(0, rx, 2), xt::range(0, ry, 2), xt::range(0, rz, 2)) = false;
                 }
             } else {
-                if (padding != tos_padding::none) {
-                    xt::view(deleted, xt::range(1, rh - 1), xt::range(1, rw - 1)) = false;
+                if (padding != tos_padding::none) { // ?
+                    xt::view(deleted, xt::range(0, rx - 1), xt::range(0, ry - 1), xt::range(0, rz - 1)) = false;
                 } // else handled by bypass if on top
             }
 
+            // accumulate nodes values from leaves to root. 
+            // https://higra.readthedocs.io/en/stable/python/tree_accumulators.html?highlight=accumulate_sequential
             auto all_deleted = accumulate_sequential(tree, deleted_vertices, accumulator_min());
 
+            // construct simplified tree
             auto stree = simplify_tree(tree, all_deleted, true);
             array_1d<value_type> saltitudes = xt::index_view(altitudes, stree.node_map);
             return make_node_weighted_tree(std::move(stree.tree), std::move(saltitudes));
@@ -773,6 +786,8 @@ namespace hg {
                         tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(
                                 do_padding(image),
                                 {(index_t) (z + 2), (index_t) (y + 2), index_t (x + 2)});
+                
+                // dimensions of padded image in khalimsly map
                 rz = (z + 2) * 2 - 1;
                 ry = (y + 2) * 2 - 1;
                 rx = (x + 2) * 2 - 1;
@@ -815,7 +830,14 @@ namespace hg {
 
                 rh = h + 2;
                 rw = w + 2;
-                auto graph = get_4_adjacency_implicit_graph({(index_t) rh, (index_t) rw});
+
+                // 6 adjacency implicit graph
+                array_3d<int> mask {{{0, 0, 0}, {0, 1, 0}, {0, 0, 0}},
+                                    {{0, 1, 0}, {1, 0, 1}, {0, 1, 0}},
+                                    {{0, 0, 0}, {0, 1, 0}, {0, 0, 0}}};
+
+                auto neighbours = mask_2_neighbours(mask)
+                auto graph = get_nd_regular_implicit_graph({(index_t) (rz), (index_t) (ry), index_t (rx)}, neighbours)
 
                 // clearly not optimal
                 array_2d<value_type> plain_map = array_2d<value_type>::from_shape({rh * rw, 2});
@@ -827,7 +849,15 @@ namespace hg {
             } else {
                 rh = h;
                 rw = w;
-                auto graph = get_4_adjacency_implicit_graph({(index_t) rh, (index_t) rw});
+
+                // 6 adjacency implicit graph
+                array_3d<int> mask {{{0, 0, 0}, {0, 1, 0}, {0, 0, 0}},
+                                    {{0, 1, 0}, {1, 0, 1}, {0, 1, 0}},
+                                    {{0, 0, 0}, {0, 1, 0}, {0, 0, 0}}};
+
+                auto neighbours = mask_2_neighbours(mask)
+                auto graph = get_nd_regular_implicit_graph({(index_t) (rz), (index_t) (ry), index_t (rx)}, neighbours)
+                
                 array_2d<value_type> plain_map = array_2d<value_type>::from_shape({rh * rw, 2});
                 xt::noalias(xt::view(plain_map, xt::all(), 0)) = xt::ravel(image);
                 xt::noalias(xt::view(plain_map, xt::all(), 1)) = xt::ravel(image);
