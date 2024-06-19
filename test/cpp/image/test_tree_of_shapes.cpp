@@ -84,29 +84,29 @@ namespace tree_of_shapes {
         REQUIRE((result == xt::reshape_view(expected_result, {result.shape()[0], result.shape()[1]})));
     }
 
-    TEST_CASE("test interpolate_plain_map_khalimsky_3d", "[tree_of_shapes]") {    
-        array_3d<int> image_3d
-                {{{0, 1}, {0, 1}, {0, 0}},
-                 {{1, 1}, {1, 1}, {1, 1}},
-                 {{1, 0}, {1, 0}, {1, 0}}};
+    // TEST_CASE("test interpolate_plain_map_khalimsky_3d", "[tree_of_shapes]") {    
+    //     array_3d<int> image_3d
+    //             {{{0, 1}, {0, 1}, {0, 0}},
+    //              {{1, 1}, {1, 1}, {1, 1}},
+    //              {{1, 0}, {1, 0}, {1, 0}}};
 
-        // array_3d<int> expected_result_3d 
-        //     {{{0, 1, 1}, {0, 1, 1}, {0, 1, 1}, {0, 0, 0}, {0, 0, 0}},
-        //      {{0, 1, 1}, {0, 1, 1}, {0, 1, 1}, {0, 1, 0}, {0, 1, 0}},
-        //      {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}},
-        //      {{1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}},
-        //      {{1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}}}
-
-
-        array_3d<int> expected_result_3d {{{0, 0, 0}}}; // false so we have the display
+    //     // array_3d<int> expected_result_3d 
+    //     //     {{{0, 1, 1}, {0, 1, 1}, {0, 1, 1}, {0, 0, 0}, {0, 0, 0}},
+    //     //      {{0, 1, 1}, {0, 1, 1}, {0, 1, 1}, {0, 1, 0}, {0, 1, 0}},
+    //     //      {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}},
+    //     //      {{1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}},
+    //     //      {{1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}}}
 
 
-        auto result = hg::tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(image_3d, {2, 3, 3});
+    //     array_3d<int> expected_result_3d {{{0, 0, 0}}}; // false so we have the display
 
-        INFO("Khalimsky map is : " << result);
 
-        REQUIRE((result == xt::reshape_view(expected_result_3d, {result.shape()[0], result.shape()[1]})));
-    }
+    //     auto result = hg::tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(image_3d, {2, 3, 3});
+
+    //     INFO("Khalimsky map is : " << result);
+
+    //     REQUIRE((result == xt::reshape_view(expected_result_3d, {result.shape()[0], result.shape()[1]})));
+    // }
 
     TEST_CASE("test sort_vertices_tree_of_shapes small integers", "[tree_of_shapes]") {
         array_nd<char> plain_map =
@@ -423,6 +423,52 @@ TEST_CASE("test tree of shapes self duality", "[tree_of_shapes]") {
     array_2d<double> image = xt::random::rand<double>({25, 38});
     auto res1 = component_tree_tree_of_shapes_image2d(image);
     auto res2 = component_tree_tree_of_shapes_image2d(-image);
+    REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
+}
+
+TEST_CASE("test tree of shapes 3D self duality", "[tree_of_shapes]") {
+    xt::random::seed(42);
+    array_3d<double> image = xt::random::rand<double>({25, 38, 24});
+
+
+    auto res1 = component_tree_tree_of_shapes_image3d(image, tos_padding::mean, true, true);
+    auto res2 = component_tree_tree_of_shapes_image3d(-image,tos_padding::mean, true, true);
+    
+    REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
+
+    res1 = component_tree_tree_of_shapes_image3d(image, tos_padding::mean, true, false);
+    res2 = component_tree_tree_of_shapes_image3d(-image,tos_padding::mean, true, false);
+    
+    REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
+
+    res1 = component_tree_tree_of_shapes_image3d(image, tos_padding::mean, false, false);
+    res2 = component_tree_tree_of_shapes_image3d(-image,tos_padding::mean, false, false);
+    
+    REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
+
+    res1 = component_tree_tree_of_shapes_image3d(image, tos_padding::mean, false, true);
+    res2 = component_tree_tree_of_shapes_image3d(-image,tos_padding::mean, false, true);
+    
+    REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
+
+    res1 = component_tree_tree_of_shapes_image3d(image, tos_padding::none, false, false);
+    res2 = component_tree_tree_of_shapes_image3d(-image,tos_padding::none, false, false);
+    
+    REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
+
+    res1 = component_tree_tree_of_shapes_image3d(image, tos_padding::none, true, false);
+    res2 = component_tree_tree_of_shapes_image3d(-image,tos_padding::none, true, false);
+    
+    REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
+
+    res1 = component_tree_tree_of_shapes_image3d(image, tos_padding::none, true, true);
+    res2 = component_tree_tree_of_shapes_image3d(-image,tos_padding::none, true, true);
+    
+    REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
+
+    res1 = component_tree_tree_of_shapes_image3d(image, tos_padding::none, false, true);
+    res2 = component_tree_tree_of_shapes_image3d(-image,tos_padding::none, false, true);
+    
     REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
 }
 

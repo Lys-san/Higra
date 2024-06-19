@@ -672,9 +672,9 @@ namespace hg {
         hg_assert(image.dimension() == 3, "image must be a 3d array");
         embedding_grid_3d embedding(image.shape());
         auto shape = embedding.shape();
-        size_t z = shape[0];
+        size_t z = shape[2];
         size_t y = shape[1];
-        size_t x = shape[2]; 
+        size_t x = shape[0]; 
         auto vertex_weights = xt::flatten(image);
         using value_type = typename T::value_type;
 
@@ -686,7 +686,7 @@ namespace hg {
         array_3d<value_type> cooked_vertex_values;
 
         // function to add padding to the image
-        auto do_padding = [&padding, &z, &y, &x](const auto &image) {
+        auto do_padding = [&padding, &x, &y, &z](const auto &image) {
             value_type pad_value;
             switch (padding) {
                 case tos_padding::zero:
@@ -720,17 +720,18 @@ namespace hg {
             auto padded_image = xt::reshape_view(padded_vertices, {x + 2, y + 2, z + 2}); // construct padding image with dimensions += 2
 
             // fill padded image with corresponding values
+            xt::view(padded_image, xt::all(), xt::all(), xt::all()) = pad_value;
             xt::noalias(xt::view(padded_image, xt::range(1, x + 1), xt::range(1, y + 1), xt::range(1, z + 1))) = image; // put original in center of padded one
-            xt::view(padded_image, 0        , xt::all(), 0        ) = pad_value;
-            xt::view(padded_image, x + 1    , xt::all(), 0        ) = pad_value;
-            xt::view(padded_image, xt::all(), 0        , 0        ) = pad_value;
-            xt::view(padded_image, xt::all(), y + 1    , 0        ) = pad_value;
-            xt::view(padded_image, 0        , xt::all(), z + 1    ) = pad_value;
-            xt::view(padded_image, x + 1    , xt::all(), z + 1    ) = pad_value;
-            xt::view(padded_image, xt::all(), 0        , z + 1    ) = pad_value;
-            xt::view(padded_image, xt::all(), y + 1    , z + 1    ) = pad_value;
-            xt::view(padded_image, 0        , y + 1    , xt::all()) = pad_value;
-            xt::view(padded_image, x + 1    , y + 1    , xt::all()) = pad_value;
+            // xt::view(padded_image, 0        , xt::all(), 0        ) = pad_value;
+            // xt::view(padded_image, x + 1    , xt::all(), 0        ) = pad_value;
+            // xt::view(padded_image, xt::all(), 0        , 0        ) = pad_value;
+            // xt::view(padded_image, xt::all(), y + 1    , 0        ) = pad_value;
+            // xt::view(padded_image, 0        , xt::all(), z + 1    ) = pad_value;
+            // xt::view(padded_image, x + 1    , xt::all(), z + 1    ) = pad_value;
+            // xt::view(padded_image, xt::all(), 0        , z + 1    ) = pad_value;
+            // xt::view(padded_image, xt::all(), y + 1    , z + 1    ) = pad_value;
+            // xt::view(padded_image, 0        , y + 1    , xt::all()) = pad_value;
+            // xt::view(padded_image, x + 1    , y + 1    , xt::all()) = pad_value;
 
             return padded_vertices;
         };
@@ -745,8 +746,7 @@ namespace hg {
             auto &tree = res_tree.tree;
             auto &altitudes = res_tree.altitudes;
 
-            // TODO : what is immersion boolean ?
-            // immersion = do we immerse in the khalimsky space ? (?)
+            // immersion = do we convert image to contunious plain map
             if (!original_size || (!immersion && padding == tos_padding::none)) {
                 return res_tree;
             }
@@ -764,8 +764,8 @@ namespace hg {
                     xt::view(deleted, xt::range(0, rx, 2), xt::range(0, ry, 2), xt::range(0, rz, 2)) = false;
                 }
             } else {
-                if (padding != tos_padding::none) { // ?
-                    xt::view(deleted, xt::range(0, rx - 1), xt::range(0, ry - 1), xt::range(0, rz - 1)) = false;
+                if (padding != tos_padding::none) {
+                    xt::view(deleted, xt::range(1, rx - 1), xt::range(1, ry - 1), xt::range(1, rz - 1)) = false;
                 } // else handled by bypass if on top
             }
 
@@ -787,14 +787,14 @@ namespace hg {
                 auto cooked_vertex_values =
                         tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(
                                 do_padding(image),
-                                {(index_t) (z + 2), (index_t) (y + 2), index_t (x + 2)});
+                                {(index_t) (x + 2), (index_t) (y + 2), (index_t) (z + 2)});
                 
                 // dimensions of new image
                 rz = (z + 2) * 2 - 1;
                 ry = (y + 2) * 2 - 1;
                 rx = (x + 2) * 2 - 1;
 
-                auto graph = get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), index_t (rz)});
+                auto graph = get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), (index_t) (rz)});
 
                 auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, cooked_vertex_values,
                                                                                       exterior_vertex);
@@ -808,7 +808,7 @@ namespace hg {
                 ry = y * 2 - 1;
                 rx = x * 2 - 1;
 
-                auto graph = get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), index_t (rz)});
+                auto graph = get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), (index_t) (rz)});
 
                 
                 auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, cooked_vertex_values,
@@ -821,9 +821,9 @@ namespace hg {
 
                 rz = z + 2;
                 ry = y + 2;
-                rx = x + 1;
+                rx = x + 2;
 
-                auto graph = get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), index_t (rz)});
+                auto graph = get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), (index_t) (rz)});
 
 
                 // (original comment) clearly not optimal
@@ -838,7 +838,7 @@ namespace hg {
                 ry = y;
                 rx = x;
 
-                auto graph = get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), index_t (rz)});
+                auto graph = get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), (index_t) (rz)});
 
                 array_2d<value_type> plain_map = array_2d<value_type>::from_shape({rx * ry * rz, 2});
                 xt::noalias(xt::view(plain_map, xt::all(), 0)) = xt::ravel(image);
