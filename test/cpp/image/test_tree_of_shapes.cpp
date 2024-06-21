@@ -84,30 +84,6 @@ namespace tree_of_shapes {
         REQUIRE((result == xt::reshape_view(expected_result, {result.shape()[0], result.shape()[1]})));
     }
 
-    // TEST_CASE("test interpolate_plain_map_khalimsky_3d", "[tree_of_shapes]") {    
-    //     array_3d<int> image_3d
-    //             {{{0, 1}, {0, 1}, {0, 0}},
-    //              {{1, 1}, {1, 1}, {1, 1}},
-    //              {{1, 0}, {1, 0}, {1, 0}}};
-
-    //     // array_3d<int> expected_result_3d 
-    //     //     {{{0, 1, 1}, {0, 1, 1}, {0, 1, 1}, {0, 0, 0}, {0, 0, 0}},
-    //     //      {{0, 1, 1}, {0, 1, 1}, {0, 1, 1}, {0, 1, 0}, {0, 1, 0}},
-    //     //      {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}},
-    //     //      {{1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}},
-    //     //      {{1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}, {1, 1, 0}}}
-
-
-    //     array_3d<int> expected_result_3d {{{0, 0, 0}}}; // false so we have the display
-
-
-    //     auto result = hg::tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(image_3d, {2, 3, 3});
-
-    //     INFO("Khalimsky map is : " << result);
-
-    //     REQUIRE((result == xt::reshape_view(expected_result_3d, {result.shape()[0], result.shape()[1]})));
-    // }
-
     TEST_CASE("test sort_vertices_tree_of_shapes small integers", "[tree_of_shapes]") {
         array_nd<char> plain_map =
                 {{{1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}},
@@ -426,10 +402,11 @@ TEST_CASE("test tree of shapes self duality", "[tree_of_shapes]") {
     REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
 }
 
+// 3D ToS tests
+
 TEST_CASE("test tree of shapes 3D self duality", "[tree_of_shapes]") {
     xt::random::seed(42);
     array_3d<double> image = xt::random::rand<double>({25, 38, 24});
-
 
     auto res1 = component_tree_tree_of_shapes_image3d(image, tos_padding::mean, true, true);
     auto res2 = component_tree_tree_of_shapes_image3d(-image,tos_padding::mean, true, true);
@@ -470,6 +447,59 @@ TEST_CASE("test tree of shapes 3D self duality", "[tree_of_shapes]") {
     res2 = component_tree_tree_of_shapes_image3d(-image,tos_padding::none, false, true);
     
     REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
+}
+
+TEST_CASE("test tree of shapes 3D=2D no immersion no padding original space", "[tree_of_shapes]") {
+    // A "3D" array which is the same as in previous unit test should 
+    // give the same result
+    array_nd<float> image{{{1, 1, 1, 1, 1},
+                          {1, 0, 1, 2, 1},
+                          {1, 1, 1, 1, 1}}};
+
+    auto result = component_tree_tree_of_shapes_image3d(image, tos_padding::none, /*original*/true, /*immersion*/false);
+    auto &tree = result.tree;
+    auto &altitudes = result.altitudes;
+
+    array_1d <index_t>
+            ref_parents{17, 17, 17, 17, 17,
+                        17, 16, 17, 15, 17,
+                        17, 17, 17, 17, 17, 17, 17, 17};
+    array_1d<float> ref_altitudes{1, 1, 1, 1, 1,
+                                  1, 0, 1, 2, 1,
+                                  1, 1, 1, 1, 1, 2, 0, 1};
+
+    REQUIRE((tree.parents() == ref_parents));
+    REQUIRE((altitudes == ref_altitudes));
+}
+
+TEST_CASE("test tree of shapes 3D=2D no immersion padding zero no original space", "[tree_of_shapes]") {
+    array_nd<float> image{{{1, 1, 1, 1, 1},
+                          {1, 0, 1, 2, 1},
+                          {1, 1, 1, 1, 1}}};
+
+    auto result = component_tree_tree_of_shapes_image3d(image, tos_padding::zero, /*original*/false, /*immersion*/
+                                                        false);
+    auto &tree = result.tree;
+    auto &altitudes = result.altitudes;
+
+    array_1d <index_t>
+            ref_parents{38, 38, 38, 38, 38, 38, 38,
+                        38, 37, 37, 37, 37, 37, 38,
+                        38, 37, 36, 37, 35, 37, 38,
+                        38, 37, 37, 37, 37, 37, 38,
+                        38, 38, 38, 38, 38, 38, 38, 37, 37, 38, 38};
+    array_1d<float> ref_altitudes{0, 0, 0, 0, 0, 0, 0,
+                                  0, 1, 1, 1, 1, 1, 0,
+                                  0, 1, 0, 1, 2, 1, 0,
+                                  0, 1, 1, 1, 1, 1, 0,
+                                  0, 0, 0, 0, 0, 0, 0, 2, 0, 1, 0};
+    
+    INFO("parents are : " << tree.parents().size() << " VS " << ref_parents.size());
+
+    REQUIRE((tree.parents() == ref_parents));
+    REQUIRE((altitudes == ref_altitudes));
+
+
 }
 
 }
