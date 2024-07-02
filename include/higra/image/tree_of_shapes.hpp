@@ -240,9 +240,9 @@ namespace hg {
         template<typename T, typename value_type=typename T::value_type>
         auto interpolate_plain_map_khalimsky_3d(const xt::xexpression<T> &ximage, const embedding_grid_3d &embedding) {
             auto &image = ximage.derived_cast();
-            size_t x = embedding.shape()[2];
+            size_t x = embedding.shape()[0];
             size_t y = embedding.shape()[1];
-            size_t z = embedding.shape()[0];
+            size_t z = embedding.shape()[2];
 
             // size of cubical complex is doubled in each dimension
             size_t x2 = x * 2 - 1;
@@ -546,7 +546,7 @@ namespace hg {
                     auto tmp = xt::sum(xt::view(image, 0, xt::all()))() +
                                xt::sum(xt::view(image, h - 1, xt::all()))();
                     if (h > 2) {
-                        tmp += xt::sum(xt::view(image, xt::range(1, h - 1), 0))() +  // TODO : shouldn't it be h - 2 ?
+                        tmp += xt::sum(xt::view(image, xt::range(1, h - 1), 0))() +
                                xt::sum(xt::view(image, xt::range(1, h - 1), w - 1))();
                     }
                     pad_value = (value_type) (tmp / ((std::max)(2.0 * (w + h) - 4, 1.0)));
@@ -675,10 +675,10 @@ namespace hg {
         size_t z = shape[2];
         size_t y = shape[1];
         size_t x = shape[0]; 
+
         auto vertex_weights = xt::flatten(image);
         using value_type = typename T::value_type;
 
-        // dimensions of the image in the khalimsky grid ?
         size_t rx;
         size_t ry;
         size_t rz;
@@ -754,13 +754,13 @@ namespace hg {
             // if original_size is true, all the nodes corresponding to pixels
             // not belonging to the original image are removed
             array_1d<bool> deleted_vertices({num_leaves(res_tree.tree)}, true); // aray of bool for each leaf
-            auto deleted = xt::reshape_view(deleted_vertices, {rz, ry, rx});    // reshape with image (?) shape
+            auto deleted = xt::reshape_view(deleted_vertices, {rx, ry, rz});    // reshape with current image shape
             if (immersion) {
                 if (padding != tos_padding::none) {
-                    // work without the padding
+                    // do not delete original image (centered + 1 pixel over two)
                     xt::view(deleted, xt::range(2, rx - 2, 2), xt::range(2, ry - 2, 2), xt::range(2, rz - 2, 2)) = false;
                 } else {
-                    // work with whole image
+                    // do not delete 1 pixel over two in each dimension
                     xt::view(deleted, xt::range(0, rx, 2), xt::range(0, ry, 2), xt::range(0, rz, 2)) = false;
                 }
             } else {
@@ -769,15 +769,11 @@ namespace hg {
                 } // else handled by bypass if on top
             }
 
-            // accumulate nodes values from leaves to root. 
-            // https://higra.readthedocs.io/en/stable/python/tree_accumulators.html?highlight=accumulate_sequential
-            // each node of the new tree is the minimum of its children.
             auto all_deleted = accumulate_sequential(tree, deleted_vertices, accumulator_min());
 
-            // construct simplified tree and return it
-            auto stree = simplify_tree(tree, all_deleted, true);
-            array_1d<value_type> saltitudes = xt::index_view(altitudes, stree.node_map);
-            return make_node_weighted_tree(std::move(stree.tree), std::move(saltitudes));
+            auto stree = simplify_tree(tree, all_deleted, true); // delete all chosen nodes (including leaves)
+            array_1d<value_type> saltitudes = xt::index_view(altitudes, stree.node_map); // get altitudes of simplified tree nodes
+            return make_node_weighted_tree(std::move(stree.tree), std::move(saltitudes)); // construct simplified tree and return it
         };
 
         // construct graph according to given parameters (immersion, padding)

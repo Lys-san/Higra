@@ -472,34 +472,31 @@ TEST_CASE("test tree of shapes 3D=2D no immersion no padding original space", "[
     REQUIRE((altitudes == ref_altitudes));
 }
 
-TEST_CASE("test tree of shapes 3D=2D no immersion padding zero no original space", "[tree_of_shapes]") {
-    array_nd<float> image{{{1, 1, 1, 1, 1},
-                          {1, 0, 1, 2, 1},
-                          {1, 1, 1, 1, 1}}};
+TEST_CASE("test tree of shapes 3D=2D default param", "[tree_of_shapes]") {
 
-    auto result = component_tree_tree_of_shapes_image3d(image, tos_padding::zero, /*original*/false, /*immersion*/
-                                                        false);
+    array_nd<float> image{{{1, 1},
+                          {1, -2},
+                          {1, 7}}};
+
+    auto result = component_tree_tree_of_shapes_image3d(image, tos_padding::mean, true);
     auto &tree = result.tree;
     auto &altitudes = result.altitudes;
 
     array_1d <index_t>
-            ref_parents{38, 38, 38, 38, 38, 38, 38,
-                        38, 37, 37, 37, 37, 37, 38,
-                        38, 37, 36, 37, 35, 37, 38,
-                        38, 37, 37, 37, 37, 37, 38,
-                        38, 38, 38, 38, 38, 38, 38, 37, 37, 38, 38};
-    array_1d<float> ref_altitudes{0, 0, 0, 0, 0, 0, 0,
-                                  0, 1, 1, 1, 1, 1, 0,
-                                  0, 1, 0, 1, 2, 1, 0,
-                                  0, 1, 1, 1, 1, 1, 0,
-                                  0, 0, 0, 0, 0, 0, 0, 2, 0, 1, 0};
-    
-    INFO("parents are : " << tree.parents().size() << " VS " << ref_parents.size());
+            ref_parents{7, 7,
+                        7, 6,
+                        7, 8,
+                        7, 9, 9, 9};
+    array_1d<float>
+            ref_altitudes{1., 1.,
+                          1., -2.,
+                          1., 7.,
+                          -2., 1., 7., 1.5};
 
+
+    INFO("parents are : " << tree.parents())
     REQUIRE((tree.parents() == ref_parents));
     REQUIRE((altitudes == ref_altitudes));
-
-
 }
 
 }
