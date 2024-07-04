@@ -494,7 +494,7 @@ TEST_CASE("test tree of shapes 3D=2D default param", "[tree_of_shapes]") {
                           -2., 1., 7., 1.5};
 
 
-    INFO("parents are : " << tree.parents())
+    INFO("altitudes are : " << altitudes << "\nexpected : " << ref_altitudes);
     REQUIRE((tree.parents() == ref_parents));
     REQUIRE((altitudes == ref_altitudes));
 }

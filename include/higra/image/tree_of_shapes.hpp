@@ -685,7 +685,6 @@ namespace hg {
 
         array_3d<value_type> cooked_vertex_values;
 
-        // function to add padding to the image
         auto do_padding = [&padding, &x, &y, &z](const auto &image) {
             value_type pad_value;
             switch (padding) {
@@ -694,20 +693,19 @@ namespace hg {
                     break;
                 case tos_padding::mean: {
                     // compute mean of all boundary pixels
-
                     // TODO : check image dimensions to avoid out of range indexes
                     auto tmp = xt::sum(xt::view(image, 0                  , 0                  , xt::all()))() +
                                xt::sum(xt::view(image, 0                  , y-1                , xt::all()))() +
-                               xt::sum(xt::view(image, 0                  , xt::range(1, y - 2), 0        ))() +
-                               xt::sum(xt::view(image, 0                  , xt::range(1, y - 2), z-1      ))() +
+                               xt::sum(xt::view(image, 0                  , xt::range(1, y - 1), 0        ))() +
+                               xt::sum(xt::view(image, 0                  , xt::range(1, y - 1), z-1      ))() +
                                xt::sum(xt::view(image, x-1                , 0                  , xt::all()))() +
                                xt::sum(xt::view(image, x-1                , y-1                , xt::all()))() +
-                               xt::sum(xt::view(image, x-1                , xt::range(1, y - 2), 0        ))() +
-                               xt::sum(xt::view(image, x-1                , xt::range(1, y - 2), z-1      ))() +
-                               xt::sum(xt::view(image, xt::range(1, x - 2), 0                  , 0        ))() +
-                               xt::sum(xt::view(image, xt::range(1, x - 2), y-1                , 0        ))() +
-                               xt::sum(xt::view(image, xt::range(1, x - 2), y-1                , z-1      ))() +
-                               xt::sum(xt::view(image, xt::range(1, x - 2), 0                  , z-1      ))();
+                               xt::sum(xt::view(image, x-1                , xt::range(1, y - 1), 0        ))() +
+                               xt::sum(xt::view(image, x-1                , xt::range(1, y - 1), z-1      ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 1), 0                  , 0        ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 1), y-1                , 0        ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 1), y-1                , z-1      ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 1), 0                  , z-1      ))();
 
                     pad_value = (value_type) (tmp / ((std::max)(4.0 * (x + y + z) - 8, 1.0)));
                     break;
@@ -722,45 +720,29 @@ namespace hg {
             // fill padded image with corresponding values
             xt::view(padded_image, xt::all(), xt::all(), xt::all()) = pad_value;
             xt::noalias(xt::view(padded_image, xt::range(1, x + 1), xt::range(1, y + 1), xt::range(1, z + 1))) = image; // put original in center of padded one
-            // xt::view(padded_image, 0        , xt::all(), 0        ) = pad_value;
-            // xt::view(padded_image, x + 1    , xt::all(), 0        ) = pad_value;
-            // xt::view(padded_image, xt::all(), 0        , 0        ) = pad_value;
-            // xt::view(padded_image, xt::all(), y + 1    , 0        ) = pad_value;
-            // xt::view(padded_image, 0        , xt::all(), z + 1    ) = pad_value;
-            // xt::view(padded_image, x + 1    , xt::all(), z + 1    ) = pad_value;
-            // xt::view(padded_image, xt::all(), 0        , z + 1    ) = pad_value;
-            // xt::view(padded_image, xt::all(), y + 1    , z + 1    ) = pad_value;
-            // xt::view(padded_image, 0        , y + 1    , xt::all()) = pad_value;
-            // xt::view(padded_image, x + 1    , y + 1    , xt::all()) = pad_value;
 
             return padded_vertices;
         };
 
-        // sort pixels + union-find + canonicalize tree
         auto process_sorted_pixels = [&original_size, &padding, &rx, &ry, &rz, &immersion](auto &graph,
                                                                                       auto &sorted_vertex_indices,
                                                                                       auto &enqueued_levels) {
-            // firts, construct tree from sorted vertices
             auto res_tree = component_tree_internal::tree_from_sorted_vertices(graph, enqueued_levels,
                                                                                sorted_vertex_indices);
             auto &tree = res_tree.tree;
             auto &altitudes = res_tree.altitudes;
 
-            // immersion = do we convert image to contunious plain map
             if (!original_size || (!immersion && padding == tos_padding::none)) {
                 return res_tree;
             }
 
-            // if original_size is true, all the nodes corresponding to pixels
-            // not belonging to the original image are removed
-            array_1d<bool> deleted_vertices({num_leaves(res_tree.tree)}, true); // aray of bool for each leaf
-            auto deleted = xt::reshape_view(deleted_vertices, {rx, ry, rz});    // reshape with current image shape
+
+            array_1d<bool> deleted_vertices({num_leaves(res_tree.tree)}, true);
+            auto deleted = xt::reshape_view(deleted_vertices, {rx, ry, rz}); 
             if (immersion) {
                 if (padding != tos_padding::none) {
-                    // do not delete original image (centered + 1 pixel over two)
                     xt::view(deleted, xt::range(2, rx - 2, 2), xt::range(2, ry - 2, 2), xt::range(2, rz - 2, 2)) = false;
                 } else {
-                    // do not delete 1 pixel over two in each dimension
                     xt::view(deleted, xt::range(0, rx, 2), xt::range(0, ry, 2), xt::range(0, rz, 2)) = false;
                 }
             } else {
@@ -771,21 +753,19 @@ namespace hg {
 
             auto all_deleted = accumulate_sequential(tree, deleted_vertices, accumulator_min());
 
-            auto stree = simplify_tree(tree, all_deleted, true); // delete all chosen nodes (including leaves)
-            array_1d<value_type> saltitudes = xt::index_view(altitudes, stree.node_map); // get altitudes of simplified tree nodes
-            return make_node_weighted_tree(std::move(stree.tree), std::move(saltitudes)); // construct simplified tree and return it
+            auto stree = simplify_tree(tree, all_deleted, true);
+            array_1d<value_type> saltitudes = xt::index_view(altitudes, stree.node_map);
+            return make_node_weighted_tree(std::move(stree.tree), std::move(saltitudes));
         };
 
         // construct graph according to given parameters (immersion, padding)
         if (immersion) {
             if (padding != tos_padding::none) {
-                // construct image in the khalimsky map
                 auto cooked_vertex_values =
                         tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(
                                 do_padding(image),
                                 {(index_t) (x + 2), (index_t) (y + 2), (index_t) (z + 2)});
                 
-                // dimensions of new image
                 rz = (z + 2) * 2 - 1;
                 ry = (y + 2) * 2 - 1;
                 rx = (x + 2) * 2 - 1;
@@ -822,7 +802,7 @@ namespace hg {
                 auto graph = get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), (index_t) (rz)});
 
 
-                // (original comment) clearly not optimal
+                // clearly not optimal
                 array_2d<value_type> plain_map = array_2d<value_type>::from_shape({rx * ry * rz, 2});
                 xt::noalias(xt::view(plain_map, xt::all(), 0)) = padded_vertices;
                 xt::noalias(xt::view(plain_map, xt::all(), 1)) = padded_vertices;
