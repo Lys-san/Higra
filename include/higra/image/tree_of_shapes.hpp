@@ -692,22 +692,36 @@ namespace hg {
                     pad_value = 0;
                     break;
                 case tos_padding::mean: {
-                    // compute mean of all boundary pixels
-                    // TODO : check image dimensions to avoid adding some vertices multiple times.
-                    auto tmp = xt::sum(xt::view(image, 0                  , 0                  , xt::all()))() +
-                               xt::sum(xt::view(image, 0                  , y-1                , xt::all()))() +
-                               xt::sum(xt::view(image, 0                  , xt::range(1, y - 1), 0        ))() +
-                               xt::sum(xt::view(image, 0                  , xt::range(1, y - 1), z-1      ))() +
-                               xt::sum(xt::view(image, x-1                , 0                  , xt::all()))() +
-                               xt::sum(xt::view(image, x-1                , y-1                , xt::all()))() +
-                               xt::sum(xt::view(image, x-1                , xt::range(1, y - 1), 0        ))() +
-                               xt::sum(xt::view(image, x-1                , xt::range(1, y - 1), z-1      ))() +
-                               xt::sum(xt::view(image, xt::range(1, x - 1), 0                  , 0        ))() +
-                               xt::sum(xt::view(image, xt::range(1, x - 1), y-1                , 0        ))() +
-                               xt::sum(xt::view(image, xt::range(1, x - 1), y-1                , z-1      ))() +
-                               xt::sum(xt::view(image, xt::range(1, x - 1), 0                  , z-1      ))();
+                    double edges     = 4;
+                    double vertices  = 4;
+                    double dimension = 2;
 
-                    pad_value = (value_type) (tmp / ((std::max)(4.0 * (x + y + z) - 8, 1.0)));
+                    // compute mean of all boundary pixels
+                    auto tmp = xt::sum(xt::view(image, 0                  , xt::all(), 0                 ))() +
+                               xt::sum(xt::view(image, x - 1              , xt::all(), 0                 ))();
+
+                    if (y > 2) {
+                        tmp += xt::sum(xt::view(image, xt::range(1, x - 1), 0    , 0                     ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 1), y - 1, 0                     ))();
+                    }
+
+                    if(z > 2) {
+                        tmp = xt::sum(xt::view(image, 0                  , xt::all(), z - 1              ))() +
+                              xt::sum(xt::view(image, x - 1              , xt::all(), z - 1              ))() +
+                              xt::sum(xt::view(image, xt::range(1, x - 1), 0        , z - 1              ))() +
+                              xt::sum(xt::view(image, xt::range(1, x - 1), y - 1    , z - 1              ))() +
+                              xt::sum(xt::view(image, 0                  , 0        , xt::range(1, z - 1)))() +
+                              xt::sum(xt::view(image, x - 1              , y - 1    , xt::range(1, z - 1)))() +
+                              xt::sum(xt::view(image, 0                  , y - 1    , xt::range(1, z - 1)))() +
+                              xt::sum(xt::view(image, x - 1              , 0        , xt::range(1, z - 1)))();
+
+                        edges *= 2;
+                        vertices += 8;
+                        dimension += 1;
+                    }
+
+                    double l = dimension == 2 ? x + y : x + y + z;
+                    pad_value = (value_type) (tmp / ((std::max)((vertices/dimension) * l - edges, 1.0)));
                     break;
                 }
                 case none:
