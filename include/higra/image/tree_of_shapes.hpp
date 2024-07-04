@@ -693,7 +693,7 @@ namespace hg {
                     break;
                 case tos_padding::mean: {
                     // compute mean of all boundary pixels
-                    // TODO : check image dimensions to avoid out of range indexes
+                    // TODO : check image dimensions to avoid adding some vertices multiple times.
                     auto tmp = xt::sum(xt::view(image, 0                  , 0                  , xt::all()))() +
                                xt::sum(xt::view(image, 0                  , y-1                , xt::all()))() +
                                xt::sum(xt::view(image, 0                  , xt::range(1, y - 1), 0        ))() +
