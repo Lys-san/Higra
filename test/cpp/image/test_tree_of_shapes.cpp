@@ -499,4 +499,47 @@ TEST_CASE("test tree of shapes 3D=2D default param", "[tree_of_shapes]") {
     REQUIRE((altitudes == ref_altitudes));
 }
 
+TEST_CASE("test tree of shapes 3D default param", "[tree_of_shapes]") {
+
+    array_nd<float> image = {{{1, 1, 1},
+                             {1, 1, 1},
+                             {1, 1, 1}},
+                             {{1, 1, 1},
+                             {1, -2, 1},
+                             {1, 1, 1}},
+                             {{1, 1, 1},
+                             {1, 1, 1},
+                             {1, 1, 1}}};
+
+    auto result = component_tree_tree_of_shapes_image3d(image, tos_padding::mean, true);
+    auto &tree = result.tree;
+    auto &altitudes = result.altitudes;
+
+    array_1d<float>
+            ref_parents{28., 28., 28.,
+                        28., 28., 28.,
+                        28., 28., 28.,
+                        28., 28., 28.,
+                        28., 27., 28.,
+                        28., 28., 28.,
+                        28., 28., 28.,
+                        28., 28., 28.,
+                        28., 28., 28., 28., 28};
+    array_1d<float>
+            ref_altitudes{1., 1. , 1.,
+                          1., 1. , 1.,
+                          1., 1. , 1.,
+                          1., 1. , 1.,
+                          1., -2., 1.,
+                          1., 1. , 1.,
+                          1., 1. , 1.,
+                          1., 1. , 1.,
+                          1., 1. , 1., -2., 1.};
+
+
+    INFO("altitudes are : " << altitudes << "\nexpected : " << ref_altitudes);
+    REQUIRE((tree.parents() == ref_parents));
+    REQUIRE((altitudes == ref_altitudes));
+}
+
 }
