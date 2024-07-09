@@ -391,13 +391,13 @@ class TestTreeOfShapesImage(unittest.TestCase):
         self.assertTrue(hg.test_tree_isomorphism(tree, ref_tree))
 
 
-    # # 3d ToS
-    # def test_tree_of_shapes_3d_self_dual(self):
-    #     np.random.seed(42)
-    #     image = np.random.rand(25, 38, 25)
-    #     neg_image = -1 * image
+    # 3d ToS
+    def test_tree_of_shapes_3d_self_dual(self):
+        np.random.seed(42)
+        image = np.random.rand(25, 38, 25)
+        # neg_image = -1 * image
 
-    #     tree1, altitudes1 = hg.component_tree_tree_of_shapes_image3d(image)
-    #     tree2, altitudes2 = hg.component_tree_tree_of_shapes_image3d(neg_image)
+        tree1, altitudes1 = hg.component_tree_tree_of_shapes_image3d(image)
+        # tree2, altitudes2 = hg.component_tree_tree_of_shapes_image3d(neg_image)
 
-    #     self.assertTrue(hg.test_tree_isomorphism(tree1, tree2))
+        # self.assertTrue(hg.test_tree_isomorphism(tree1, tree2))
