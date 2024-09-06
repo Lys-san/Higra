@@ -1,7 +1,6 @@
 *~
 cmake-build*
 build/
-tools/
 *.o
 dependencies
 .idea
