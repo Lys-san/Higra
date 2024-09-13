@@ -22,6 +22,7 @@
 #include <map>
 #include <deque>
 
+
 namespace hg {
 
     namespace tree_of_shapes_internal {
@@ -181,53 +182,53 @@ namespace hg {
             index_t m_size = 0;
         };
 
-        template<typename T, typename value_type=typename T::value_type>
-        auto interpolate_plain_map_khalimsky_2d_old(const xt::xexpression<T> &ximage, const embedding_grid_2d &embedding) {
-            auto &image = ximage.derived_cast();
-            size_t h = embedding.shape()[0];
-            size_t w = embedding.shape()[1];
-            size_t h2 = h * 2 - 1;
-            size_t w2 = w * 2 - 1;
+        // template<typename T, typename value_type=typename T::value_type>
+        // auto interpolate_plain_map_khalimsky_2d_old(const xt::xexpression<T> &ximage, const embedding_grid_2d &embedding) {
+        //     auto &image = ximage.derived_cast();
+        //     size_t h = embedding.shape()[0];
+        //     size_t w = embedding.shape()[1];
+        //     size_t h2 = h * 2 - 1;
+        //     size_t w2 = w * 2 - 1;
 
-            array_2d<value_type> plain_map = array_2d<value_type>::from_shape({h2 * w2, 2});
-            const auto image2d = xt::reshape_view(image, {h, w});
-            auto plain_map2d = xt::reshape_view(plain_map, {h2, w2, (size_t) 2});
+        //     array_2d<value_type> plain_map = array_2d<value_type>::from_shape({h2 * w2, 2});
+        //     const auto image2d = xt::reshape_view(image, {h, w});
+        //     auto plain_map2d = xt::reshape_view(plain_map, {h2, w2, (size_t) 2});
 
-            // 2 faces
-            xt::noalias(xt::view(plain_map2d, xt::range(0, h2, 2), xt::range(0, w2, 2), 0)) = image2d;
-            xt::noalias(xt::view(plain_map2d, xt::range(0, h2, 2), xt::range(0, w2, 2), 1)) = image2d;
+        //     // 2 faces
+        //     xt::noalias(xt::view(plain_map2d, xt::range(0, h2, 2), xt::range(0, w2, 2), 0)) = image2d;
+        //     xt::noalias(xt::view(plain_map2d, xt::range(0, h2, 2), xt::range(0, w2, 2), 1)) = image2d;
 
-            // horizontal 1 face
-            xt::noalias(xt::view(plain_map2d, xt::range(0, h2, 2), xt::range(1, w2, 2), 0)) =
-                    xt::minimum(xt::view(image2d, xt::all(), xt::range(0, w - 1)),
-                                xt::view(image2d, xt::all(), xt::range(1, w)));
-            xt::noalias(xt::view(plain_map2d, xt::range(0, h2, 2), xt::range(1, w2, 2), 1)) =
-                    xt::maximum(xt::view(image2d, xt::all(), xt::range(0, w - 1)),
-                                xt::view(image2d, xt::all(), xt::range(1, w)));
+        //     // horizontal 1 face
+        //     xt::noalias(xt::view(plain_map2d, xt::range(0, h2, 2), xt::range(1, w2, 2), 0)) =
+        //             xt::minimum(xt::view(image2d, xt::all(), xt::range(0, w - 1)),
+        //                         xt::view(image2d, xt::all(), xt::range(1, w)));
+        //     xt::noalias(xt::view(plain_map2d, xt::range(0, h2, 2), xt::range(1, w2, 2), 1)) =
+        //             xt::maximum(xt::view(image2d, xt::all(), xt::range(0, w - 1)),
+        //                         xt::view(image2d, xt::all(), xt::range(1, w)));
 
-            // vertical 1 face
-            xt::noalias(xt::view(plain_map2d, xt::range(1, h2, 2), xt::range(0, w2, 2), 0)) =
-                    xt::minimum(xt::view(image2d, xt::range(0, h - 1), xt::all()),
-                                xt::view(image2d, xt::range(1, h), xt::all()));
-            xt::noalias(xt::view(plain_map2d, xt::range(1, h2, 2), xt::range(0, w2, 2), 1)) =
-                    xt::maximum(xt::view(image2d, xt::range(0, h - 1), xt::all()),
-                                xt::view(image2d, xt::range(1, h), xt::all()));
+        //     // vertical 1 face
+        //     xt::noalias(xt::view(plain_map2d, xt::range(1, h2, 2), xt::range(0, w2, 2), 0)) =
+        //             xt::minimum(xt::view(image2d, xt::range(0, h - 1), xt::all()),
+        //                         xt::view(image2d, xt::range(1, h), xt::all()));
+        //     xt::noalias(xt::view(plain_map2d, xt::range(1, h2, 2), xt::range(0, w2, 2), 1)) =
+        //             xt::maximum(xt::view(image2d, xt::range(0, h - 1), xt::all()),
+        //                         xt::view(image2d, xt::range(1, h), xt::all()));
 
-            // 0 face
-            xt::noalias(xt::view(plain_map2d, xt::range(1, h2, 2), xt::range(1, w2, 2), 0)) =
-                    xt::minimum(
-                            xt::minimum(xt::view(image2d, xt::range(0, h - 1), xt::range(0, w - 1)),
-                                        xt::view(image2d, xt::range(0, h - 1), xt::range(1, w))),
-                            xt::minimum(xt::view(image2d, xt::range(1, h), xt::range(0, w - 1)),
-                                        xt::view(image2d, xt::range(1, h), xt::range(1, w))));
-            xt::noalias(xt::view(plain_map2d, xt::range(1, h2, 2), xt::range(1, w2, 2), 1)) =
-                    xt::maximum(
-                            xt::maximum(xt::view(image2d, xt::range(0, h - 1), xt::range(0, w - 1)),
-                                        xt::view(image2d, xt::range(0, h - 1), xt::range(1, w))),
-                            xt::maximum(xt::view(image2d, xt::range(1, h), xt::range(0, w - 1)),
-                                        xt::view(image2d, xt::range(1, h), xt::range(1, w))));
-            return plain_map;
-        }
+        //     // 0 face
+        //     xt::noalias(xt::view(plain_map2d, xt::range(1, h2, 2), xt::range(1, w2, 2), 0)) =
+        //             xt::minimum(
+        //                     xt::minimum(xt::view(image2d, xt::range(0, h - 1), xt::range(0, w - 1)),
+        //                                 xt::view(image2d, xt::range(0, h - 1), xt::range(1, w))),
+        //                     xt::minimum(xt::view(image2d, xt::range(1, h), xt::range(0, w - 1)),
+        //                                 xt::view(image2d, xt::range(1, h), xt::range(1, w))));
+        //     xt::noalias(xt::view(plain_map2d, xt::range(1, h2, 2), xt::range(1, w2, 2), 1)) =
+        //             xt::maximum(
+        //                     xt::maximum(xt::view(image2d, xt::range(0, h - 1), xt::range(0, w - 1)),
+        //                                 xt::view(image2d, xt::range(0, h - 1), xt::range(1, w))),
+        //                     xt::maximum(xt::view(image2d, xt::range(1, h), xt::range(0, w - 1)),
+        //                                 xt::view(image2d, xt::range(1, h), xt::range(1, w))));
+        //     return plain_map;
+        // }
 
     
         /** New version of interpolate khalimsky 2D, replacing xtensor views with hard coded loops. */
@@ -293,130 +294,130 @@ namespace hg {
             return plain_map;
         }
 
-        /**
-        * Interpolate khalimsky function for 3D images.
-        *
-        * @param ximage    a container for image values
-        * @param embedding the associated embedding grid
-        * 
-        * @return a projection of the image in the Khalimsky grid
-        */
-        template<typename T, typename value_type=typename T::value_type>
-        auto interpolate_plain_map_khalimsky_3d_old(const xt::xexpression<T> &ximage, const embedding_grid_3d &embedding) {
-            auto &image = ximage.derived_cast();
-            size_t x = embedding.shape()[0];
-            size_t y = embedding.shape()[1];
-            size_t z = embedding.shape()[2];
+        // /**
+        // * Interpolate khalimsky function for 3D images.
+        // *
+        // * @param ximage    a container for image values
+        // * @param embedding the associated embedding grid
+        // * 
+        // * @return a projection of the image in the Khalimsky grid
+        // */
+        // template<typename T, typename value_type=typename T::value_type>
+        // auto interpolate_plain_map_khalimsky_3d_old(const xt::xexpression<T> &ximage, const embedding_grid_3d &embedding) {
+        //     auto &image = ximage.derived_cast();
+        //     size_t x = embedding.shape()[0];
+        //     size_t y = embedding.shape()[1];
+        //     size_t z = embedding.shape()[2];
 
-            // size of cubical complex is doubled in each dimension
-            size_t x2 = x * 2 - 1;
-            size_t y2 = y * 2 - 1;
-            size_t z2 = z * 2 - 1;
+        //     // size of cubical complex is doubled in each dimension
+        //     size_t x2 = x * 2 - 1;
+        //     size_t y2 = y * 2 - 1;
+        //     size_t z2 = z * 2 - 1;
 
-            array_2d<value_type> plain_map = array_2d<value_type>::from_shape({x2 * y2 * z2, 2}); // set valued map
-            const auto image3d = xt::reshape_view(image, {x, y, z}); // our original 3D image
-            auto plain_map3d = xt::reshape_view(plain_map, {x2, y2, z2, (size_t) 2}); // the 3D associated map
+        //     array_2d<value_type> plain_map = array_2d<value_type>::from_shape({x2 * y2 * z2, 2}); // set valued map
+        //     const auto image3d = xt::reshape_view(image, {x, y, z}); // our original 3D image
+        //     auto plain_map3d = xt::reshape_view(plain_map, {x2, y2, z2, (size_t) 2}); // the 3D associated map
 
-            // 3-face (cube)
-            xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(0, z2, 2), 0)) = image3d;
-            xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(0, z2, 2), 1)) = image3d;
+        //     // 3-face (cube)
+        //     xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(0, z2, 2), 0)) = image3d;
+        //     xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(0, z2, 2), 1)) = image3d;
 
-            // 2-face (face)
-            // on x
-            xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(0, y2, 2), xt::range(0, z2, 2), 0)) =
-                    xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::all()),
-                                xt::view(image3d, xt::range(1, x), xt::all(), xt::all()));
-            xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(0, y2, 2), xt::range(0, z2, 2), 1)) =
-                    xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::all()),
-                                xt::view(image3d, xt::range(1, x), xt::all(), xt::all()));
-            // on y
-            xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(1, y2, 2), xt::range(0, z2, 2), 0)) =
-                    xt::minimum(xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::all()),
-                                xt::view(image3d, xt::all(), xt::range(1, y), xt::all()));
-            xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(1, y2, 2), xt::range(0, z2, 2), 1)) =
-                    xt::maximum(xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::all()),
-                                xt::view(image3d, xt::all(), xt::range(1, y), xt::all()));
+        //     // 2-face (face)
+        //     // on x
+        //     xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(0, y2, 2), xt::range(0, z2, 2), 0)) =
+        //             xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::all()),
+        //                         xt::view(image3d, xt::range(1, x), xt::all(), xt::all()));
+        //     xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(0, y2, 2), xt::range(0, z2, 2), 1)) =
+        //             xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::all()),
+        //                         xt::view(image3d, xt::range(1, x), xt::all(), xt::all()));
+        //     // on y
+        //     xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(1, y2, 2), xt::range(0, z2, 2), 0)) =
+        //             xt::minimum(xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::all()),
+        //                         xt::view(image3d, xt::all(), xt::range(1, y), xt::all()));
+        //     xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(1, y2, 2), xt::range(0, z2, 2), 1)) =
+        //             xt::maximum(xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::all()),
+        //                         xt::view(image3d, xt::all(), xt::range(1, y), xt::all()));
 
-            // on z
-            xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2), 0)) =
-                    xt::minimum(xt::view(image3d, xt::all(), xt::all(), xt::range(0, z - 1)),
-                                xt::view(image3d, xt::all(), xt::all(), xt::range(1, z)));
-            xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2), 1)) =
-                    xt::maximum(xt::view(image3d, xt::all(), xt::all(), xt::range(0, z - 1)),
-                                xt::view(image3d, xt::all(), xt::all(), xt::range(1, z)));
+        //     // on z
+        //     xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2), 0)) =
+        //             xt::minimum(xt::view(image3d, xt::all(), xt::all(), xt::range(0, z - 1)),
+        //                         xt::view(image3d, xt::all(), xt::all(), xt::range(1, z)));
+        //     xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2), 1)) =
+        //             xt::maximum(xt::view(image3d, xt::all(), xt::all(), xt::range(0, z - 1)),
+        //                         xt::view(image3d, xt::all(), xt::all(), xt::range(1, z)));
 
-            // 1-face (vertices)
-            // on x
-            xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(1, y2, 2), xt::range(0, z2, 2), 0)) =
-                    xt::minimum(
-                            xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::all()),
-                                        xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::all())),
-                            xt::minimum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::all()),
-                                        xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::all())));
-            xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(1, y2, 2), xt::range(0, z2, 2), 1)) =
-                    xt::maximum(
-                            xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::all()),
-                                        xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::all())),
-                            xt::maximum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::all()),
-                                        xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::all())));
+        //     // 1-face (vertices)
+        //     // on x
+        //     xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(1, y2, 2), xt::range(0, z2, 2), 0)) =
+        //             xt::minimum(
+        //                     xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::all()),
+        //                                 xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::all())),
+        //                     xt::minimum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::all()),
+        //                                 xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::all())));
+        //     xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(1, y2, 2), xt::range(0, z2, 2), 1)) =
+        //             xt::maximum(
+        //                     xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::all()),
+        //                                 xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::all())),
+        //                     xt::maximum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::all()),
+        //                                 xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::all())));
 
-            // on y
-            xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2), 0)) =
-                    xt::minimum(
-                            xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::range(1, z))),
-                            xt::minimum(xt::view(image3d, xt::range(1, x), xt::all(), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(1, x), xt::all(), xt::range(1, z))));
-            xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2), 1)) =
-                    xt::maximum(
-                            xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::range(1, z))),
-                            xt::maximum(xt::view(image3d, xt::range(1, x), xt::all(), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(1, x), xt::all(), xt::range(1, z))));
-            // on z
-            xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(1, y2, 2), xt::range(1, z2, 2), 0)) =
-                    xt::minimum(
-                            xt::minimum(xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::range(1, z))),
-                            xt::minimum(xt::view(image3d, xt::all(), xt::range(1, y), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::all(), xt::range(1, y), xt::range(1, z))));
-            xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(1, y2, 2), xt::range(1, z2, 2), 1)) =
-                    xt::maximum(
-                            xt::maximum(xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::range(1, z))),
-                            xt::maximum(xt::view(image3d, xt::all(), xt::range(1, y), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::all(), xt::range(1, y), xt::range(1, z))));
+        //     // on y
+        //     xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2), 0)) =
+        //             xt::minimum(
+        //                     xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::range(1, z))),
+        //                     xt::minimum(xt::view(image3d, xt::range(1, x), xt::all(), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(1, x), xt::all(), xt::range(1, z))));
+        //     xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(0, y2, 2), xt::range(1, z2, 2), 1)) =
+        //             xt::maximum(
+        //                     xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(0, x - 1), xt::all(), xt::range(1, z))),
+        //                     xt::maximum(xt::view(image3d, xt::range(1, x), xt::all(), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(1, x), xt::all(), xt::range(1, z))));
+        //     // on z
+        //     xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(1, y2, 2), xt::range(1, z2, 2), 0)) =
+        //             xt::minimum(
+        //                     xt::minimum(xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::range(1, z))),
+        //                     xt::minimum(xt::view(image3d, xt::all(), xt::range(1, y), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::all(), xt::range(1, y), xt::range(1, z))));
+        //     xt::noalias(xt::view(plain_map3d, xt::range(0, x2, 2), xt::range(1, y2, 2), xt::range(1, z2, 2), 1)) =
+        //             xt::maximum(
+        //                     xt::maximum(xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::all(), xt::range(0, y - 1), xt::range(1, z))),
+        //                     xt::maximum(xt::view(image3d, xt::all(), xt::range(1, y), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::all(), xt::range(1, y), xt::range(1, z))));
 
 
-            // 0-face (edge)
-            xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(1, y2, 2), xt::range(1, z2, 2), 0)) =
-                    xt::minimum(
-                        xt::minimum(
-                            xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::range(1, z))),
-                            xt::minimum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::range(1, z)))),
-                        xt::minimum(
-                            xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::range(1, z))),
-                            xt::minimum(xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::range(1, z)))));
+        //     // 0-face (edge)
+        //     xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(1, y2, 2), xt::range(1, z2, 2), 0)) =
+        //             xt::minimum(
+        //                 xt::minimum(
+        //                     xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::range(1, z))),
+        //                     xt::minimum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::range(1, z)))),
+        //                 xt::minimum(
+        //                     xt::minimum(xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::range(1, z))),
+        //                     xt::minimum(xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::range(1, z)))));
 
-            xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(1, y2, 2), xt::range(1, z2, 2), 1)) =
-                    xt::maximum(
-                        xt::maximum(
-                            xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::range(1, z))),
-                            xt::maximum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::range(1, z)))),
-                        xt::maximum(
-                            xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::range(1, z))),
-                            xt::maximum(xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::range(0, z - 1)),
-                                        xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::range(1, z)))));
+        //     xt::noalias(xt::view(plain_map3d, xt::range(1, x2, 2), xt::range(1, y2, 2), xt::range(1, z2, 2), 1)) =
+        //             xt::maximum(
+        //                 xt::maximum(
+        //                     xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(0, x - 1), xt::range(0, y - 1), xt::range(1, z))),
+        //                     xt::maximum(xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(1, x), xt::range(0, y - 1), xt::range(1, z)))),
+        //                 xt::maximum(
+        //                     xt::maximum(xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(0, x - 1), xt::range(1, y), xt::range(1, z))),
+        //                     xt::maximum(xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::range(0, z - 1)),
+        //                                 xt::view(image3d, xt::range(1, x), xt::range(1, y), xt::range(1, z)))));
 
-            return plain_map;
-        }
+        //     return plain_map;
+        // }
 
         
         /**
@@ -1061,5 +1062,223 @@ namespace hg {
         }
 
 
+    }
+
+    
+
+    /**
+     * New generic function for both 2D and 3D images.
+     * 
+     *  Usage is the same as the component_tree_tree_of_shapes_image2d function.
+     */
+    template<typename T>
+    auto component_tree_tree_of_shapes(const xt::xexpression<T> &ximage,
+                                               tos_padding padding = tos_padding::mean,
+                                               bool original_size = true,
+                                               bool immersion = true,
+                                               index_t exterior_vertex = 0) {
+
+
+
+        HG_TRACE();
+        auto &image = ximage.derived_cast();
+        const int dim = image.dimension();
+        hg_assert(dim == 2 || dim == 3, "image must be a either 2d or 3d array");
+
+        // lamda to assign value according to dimension
+        auto if_3D = [&dim](auto a, auto b) {return dim == 3 ? (a) : (b);};
+
+        embedding_grid<dim> embedding(image.shape());
+        // embedding_grid_3d embedding(image.shape());
+        auto shape = embedding.shape();
+
+        size_t x = shape[0]; 
+        size_t y = shape[1];
+        size_t z = if_3D(shape[2], 1); // 2D <=> 3D with z = 1
+
+
+        auto vertex_weights = xt::flatten(image);
+        using value_type = typename T::value_type;
+
+        size_t rx;
+        size_t ry;
+        size_t rz;
+
+        array_3d<value_type> cooked_vertex_values;
+
+        auto do_padding = [&padding, &x, &y, &z, &dim, &if_3D](const auto &image) {
+            value_type pad_value;
+            switch (padding) {
+                case tos_padding::zero:
+                    pad_value = 0;
+                    break;
+                case tos_padding::mean: {
+                    double duplicates = 4;
+                    double vertices   = 4;
+
+                    // compute mean of all boundary pixels
+                    auto tmp = xt::sum(xt::view(image, 0                  , xt::all(), 0                 ))() +
+                               xt::sum(xt::view(image, x - 1              , xt::all(), 0                 ))();
+
+                    if (y > 2) {
+                        tmp += xt::sum(xt::view(image, xt::range(1, x - 1), 0    , 0                     ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 1), y - 1, 0                     ))();
+                    }
+                    // not sure about this part
+                    if(z > 2) {
+                        tmp += xt::sum(xt::view(image, 0                  , xt::all(), z - 1              ))() +
+                               xt::sum(xt::view(image, x - 1              , xt::all(), z - 1              ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 1), 0        , z - 1              ))() +
+                               xt::sum(xt::view(image, xt::range(1, x - 1), y - 1    , z - 1              ))() +
+                               xt::sum(xt::view(image, 0                  , 0        , xt::range(1, z - 1)))() +
+                               xt::sum(xt::view(image, x - 1              , y - 1    , xt::range(1, z - 1)))() +
+                               xt::sum(xt::view(image, 0                  , y - 1    , xt::range(1, z - 1)))() +
+                               xt::sum(xt::view(image, x - 1              , 0        , xt::range(1, z - 1)))();
+
+                        duplicates *= 4;
+                        vertices   += 8;
+                    }
+
+                    double l = if_3D(x + y + z, x + y);
+                    pad_value = (value_type) (tmp / ((std::max)((vertices/dim) * l - duplicates, 1.0)));
+                    break;
+                }
+                case none:
+                default:
+                    throw std::runtime_error("Incorrect padding value.");
+            }
+            auto padding_x = x + 2;
+            auto padding_y = y + 2;
+            auto padding_z = if_3D(z + 2, 1);
+            array_1d<value_type> padded_vertices = array_1d<value_type>::from_shape({(padding_x * padding_y * padding_z)}); // plain 1D array 
+            auto padded_image = xt::reshape_view(padded_vertices, {padding_x, padding_y, padding_z}); // construct padding image with dimensions += 2
+
+            // fill padded image with corresponding values
+            xt::view(padded_image, xt::all(), xt::all(), xt::all()) = pad_value;
+            auto range_x = xt::range(1, x + 1);
+            auto range_y = xt::range(1, y + 1);
+            auto range_z = if_3D(xt::range(1, z + 1), xt::range(0, z));
+            xt::noalias(xt::view(padded_image, range_x, range_y, range_z)) = image; // put original in center of padded one
+
+            return padded_vertices;
+        };
+
+        auto process_sorted_pixels = [&original_size, &padding, &rx, &ry, &rz, &immersion, &if_3D](auto &graph,
+                                                                                      auto &sorted_vertex_indices,
+                                                                                      auto &enqueued_levels) {
+            auto res_tree = component_tree_internal::tree_from_sorted_vertices(graph, enqueued_levels,
+                                                                               sorted_vertex_indices);
+            auto &tree = res_tree.tree;
+            auto &altitudes = res_tree.altitudes;
+
+            if (!original_size || (!immersion && padding == tos_padding::none)) {
+                return res_tree;
+            }
+
+
+            array_1d<bool> deleted_vertices({num_leaves(res_tree.tree)}, true);
+            auto deleted = xt::reshape_view(deleted_vertices, {rx, ry, rz}); 
+            if (immersion) {
+                if (padding != tos_padding::none) {
+                    auto range_z = if_3D(xt::range(2, rz - 2, 2), xt::range(0, rz, 1));
+                    xt::view(deleted, xt::range(2, rx - 2, 2), xt::range(2, ry - 2, 2), range_z) = false;
+                } else {
+                    auto range_z = if_3D(xt::range(0, rz, 2), xt::range(0, rz, 1));
+                    xt::view(deleted, xt::range(0, rx, 2), xt::range(0, ry, 2), range_z) = false;
+                }
+            } else {
+                if (padding != tos_padding::none) {
+                    auto range_z = if_3D(xt::range(1, rz - 1, 2), xt::range(0, rz, 1));
+                    xt::view(deleted, xt::range(1, rx - 1), xt::range(1, ry - 1), range_z) = false;
+                } // else handled by bypass if on top
+            }
+
+            auto all_deleted = accumulate_sequential(tree, deleted_vertices, accumulator_min());
+
+            auto stree = simplify_tree(tree, all_deleted, true);
+            array_1d<value_type> saltitudes = xt::index_view(altitudes, stree.node_map);
+            return make_node_weighted_tree(std::move(stree.tree), std::move(saltitudes));
+        };
+
+        // construct graph according to given parameters (immersion, padding)
+        if (immersion) {
+            if (padding != tos_padding::none) {
+                auto cooked_vertex_values = if_3D(
+                    tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(
+                                do_padding(image),
+                                {(index_t) (x + 2), (index_t) (y + 2), (index_t) (z + 2)}),
+                    tree_of_shapes_internal::interpolate_plain_map_khalimsky_2d(
+                                do_padding(image),
+                                {(index_t) (x + 2), (index_t) (y + 2)}));
+                
+                rx = (x + 2) * 2 - 1;
+                ry = (y + 2) * 2 - 1;
+                rz = if_3D((z + 2) * 2 - 1, 1);
+
+                regular_graph<embedding_grid<dim>> graph = if_3D(
+                    get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), (index_t) (rz)}),
+                    get_4_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry)}));
+
+                auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, cooked_vertex_values,
+                                                                                      exterior_vertex);
+                return process_sorted_pixels(graph, res_sort.first, res_sort.second);
+            } else {
+                auto cooked_vertex_values = if_3D(
+                        tree_of_shapes_internal::interpolate_plain_map_khalimsky_3d(
+                                vertex_weights,
+                                embedding),
+                        tree_of_shapes_internal::interpolate_plain_map_khalimsky_2d(
+                                vertex_weights,
+                                embedding));
+                rx = x * 2 - 1;
+                ry = y * 2 - 1;
+                rz = if_3D(z * 2 - 1, 1);
+
+                regular_graph<embedding_grid<dim>> graph = if_3D(
+                    get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), (index_t) (rz)}),
+                    get_4_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry)}));
+                
+                auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, cooked_vertex_values,
+                                                                                      exterior_vertex);
+                return process_sorted_pixels(graph, res_sort.first, res_sort.second);
+            }
+        } else {
+            if (padding != tos_padding::none) {
+                auto padded_vertices = do_padding(image);
+
+                rx = x + 2;
+                ry = y + 2;
+                rz = if_3D(z + 2, 1);
+
+                regular_graph<embedding_grid<dim>> graph = if_3D(
+                    get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), (index_t) (rz)}),
+                    get_4_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry)}));
+
+
+                // clearly not optimal
+                array_2d<value_type> plain_map = array_2d<value_type>::from_shape({rx * ry * rz, 2});
+                xt::noalias(xt::view(plain_map, xt::all(), 0)) = padded_vertices;
+                xt::noalias(xt::view(plain_map, xt::all(), 1)) = padded_vertices;
+                auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, plain_map,
+                                                                                      exterior_vertex);
+                return process_sorted_pixels(graph, res_sort.first, res_sort.second);
+            } else {
+                rx = x;
+                ry = y;
+                rz = z;
+
+                regular_graph<embedding_grid<dim>> graph = if_3D(
+                    get_6_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry), (index_t) (rz)}),
+                    get_4_adjacency_implicit_graph({(index_t) (rx), (index_t) (ry)}));
+
+                array_2d<value_type> plain_map = array_2d<value_type>::from_shape({rx * ry * rz, 2});
+                xt::noalias(xt::view(plain_map, xt::all(), 0)) = xt::ravel(image);
+                xt::noalias(xt::view(plain_map, xt::all(), 1)) = xt::ravel(image);
+                auto res_sort = tree_of_shapes_internal::sort_vertices_tree_of_shapes(graph, plain_map,
+                                                                                      exterior_vertex);
+                return process_sorted_pixels(graph, res_sort.first, res_sort.second);
+            }
+
+        }
     }
 };

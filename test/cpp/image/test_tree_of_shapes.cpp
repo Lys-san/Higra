@@ -478,7 +478,7 @@ TEST_CASE("test tree of shapes 3D=2D default param", "[tree_of_shapes]") {
                           {1, -2},
                           {1, 7}}};
 
-    auto result = component_tree_tree_of_shapes_image3d(image, tos_padding::mean, true);
+    auto result = component_tree_tree_of_shapes(image, tos_padding::mean, true);
     auto &tree = result.tree;
     auto &altitudes = result.altitudes;
 
@@ -511,7 +511,7 @@ TEST_CASE("test tree of shapes 3D default param", "[tree_of_shapes]") {
                              {1, 1, 1},
                              {1, 1, 1}}};
 
-    auto result = component_tree_tree_of_shapes_image3d(image, tos_padding::mean, true);
+    auto result = component_tree_tree_of_shapes(image, tos_padding::mean, true);
     auto &tree = result.tree;
     auto &altitudes = result.altitudes;
 
