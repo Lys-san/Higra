@@ -12,9 +12,9 @@ import higra as hg
 import numpy as np
 
 
-def component_tree_tree_of_shapes_image2d(image, padding='mean', original_size=True, immersion=True, exterior_vertex=0):
+def component_tree_tree_of_shapes(image, padding='mean', original_size=True, immersion=True, exterior_vertex=0):
     """
-    Tree of shapes of a 2d image.
+    Tree of shapes of an image.
 
     The Tree of Shapes was described in [1]_.
     The algorithm used in this implementation was first described in [2]_.
@@ -61,18 +61,18 @@ def component_tree_tree_of_shapes_image2d(image, padding='mean', original_size=T
     .. [2] Th. Géraud, E. Carlinet, S. Crozet, and L. Najman, "A Quasi-linear Algorithm to Compute the Tree \
     of Shapes of nD Images", ISMM 2013.
 
-    :param image: must be a 2d array
+    :param image: must be a 2d or 3d array
     :param padding: possible values are `'none'`, `'zero'`, and `'mean'` (default = `'mean'`)
     :param original_size: remove all nodes corresponding to interpolated/padded pixels (default = `True`)
     :param immersion: performs a plain map continuous immersion fo the original image (default = `True`)
     :param exterior_vertex: linear coordinate of the exterior point
     :return: a tree (Concept :class:`~higra.CptHierarchy`) and its node altitudes
     """
-
-    assert len(image.shape) == 2, "This tree of shapes implementation only supports 2d images."
+    dim = len(image.shape)
+    assert (dim == 2 or dim == 3), "This tree of shapes implementation only supports 2d or 3d images."
     immersion = bool(immersion)
 
-    tree, altitudes = hg.cpp._component_tree_tree_of_shapes_image2d(image, padding, original_size, immersion, exterior_vertex)
+    tree, altitudes = hg.cpp._component_tree_tree_of_shapes(image, padding, original_size, immersion, exterior_vertex)
 
     if original_size or ((not immersion) and padding == "none"):
         size = image.shape
@@ -85,7 +85,7 @@ def component_tree_tree_of_shapes_image2d(image, padding='mean', original_size=T
             else:
                 size = (image.shape[0] + 2, image.shape[1] + 2)
 
-    g = hg.get_4_adjacency_graph(size)
+    g = hg.get_4_adjacency_graph(size) if (dim == 2) else hg.get_6_adjacency_graph(size)
     hg.CptHierarchy.link(tree, g)
 
     return tree, altitudes
@@ -106,7 +106,7 @@ def component_tree_multivariate_tree_of_shapes_image2d(image, padding='mean', or
     a fusion of several marginal nodes, we can't associate a single canonical value from the original image to this node.
 
     The parameters :attr:`padding`, :attr:`original_size`, and :attr:`immersion` are forwarded to the function
-    :func:`~higra.component_tree_tree_of_shapes_image2d`: please look at this function documentation for more details.
+    :func:`~higra.component_tree_tree_of_shapes`: please look at this function documentation for more details.
 
     :Complexity:
 
@@ -131,7 +131,7 @@ def component_tree_multivariate_tree_of_shapes_image2d(image, padding='mean', or
     ndim = image.shape[2]
 
     trees = tuple(
-        hg.component_tree_tree_of_shapes_image2d(
+        hg.component_tree_tree_of_shapes(
             image[:, :, k],
             padding,
             original_size=False,
@@ -142,7 +142,7 @@ def component_tree_multivariate_tree_of_shapes_image2d(image, padding='mean', or
 
     depth_map = hg.tree_fusion_depth_map(trees)
 
-    tree, altitudes = hg.component_tree_tree_of_shapes_image2d(np.reshape(depth_map, shape), padding="none",
+    tree, altitudes = hg.component_tree_tree_of_shapes(np.reshape(depth_map, shape), padding="none",
                                                                original_size=False, immersion=False)
 
     if original_size and (immersion or padding != "none"):
@@ -173,39 +173,3 @@ def component_tree_multivariate_tree_of_shapes_image2d(image, padding='mean', or
     hg.CptHierarchy.link(tree, g)
 
     return tree
-
-
-def component_tree_tree_of_shapes_image3d(image, padding='mean', original_size=True, immersion=True, exterior_vertex=0):
-    """
-    Tree of shapes of a 3d image.
-
-    This fonctions has the same usage as the component_tree_tree_of_shapes_image2d one.
-
-    :param image: must be a 2d array
-    :param padding: possible values are `'none'`, `'zero'`, and `'mean'` (default = `'mean'`)
-    :param original_size: remove all nodes corresponding to interpolated/padded pixels (default = `True`)
-    :param immersion: performs a plain map continuous immersion fo the original image (default = `True`)
-    :param exterior_vertex: linear coordinate of the exterior point
-    :return: a tree (Concept :class:`~higra.CptHierarchy`) and its node altitudes
-    """
-
-    assert len(image.shape) == 3, "This tree of shapes implementation only supports 3d images."
-    immersion = bool(immersion)
-
-    tree, altitudes = hg.cpp._component_tree_tree_of_shapes_image3d(image, padding, original_size, immersion, exterior_vertex)
-
-    if original_size or ((not immersion) and padding == "none"):
-        size = image.shape
-    else:
-        if padding == "none":
-            size = (image.shape[0] * 2 - 1, image.shape[1] * 2 - 1, image.shape[2] * 2 - 1)
-        else:
-            if immersion:
-                size = ((image.shape[0] + 2) * 2 - 1, (image.shape[1] + 2) * 2 - 1, (image.shape[2] + 2) * 2 - 1)
-            else:
-                size = (image.shape[0] + 2, image.shape[1] + 2, image.shape[2] + 2)
-
-    g = hg.get_6_adjacency_graph(size)
-    hg.CptHierarchy.link(tree, g)
-
-    return tree, altitudes
