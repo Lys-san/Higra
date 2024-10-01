@@ -451,7 +451,7 @@ TEST_CASE("test tree of shapes 3D self duality", "[tree_of_shapes]") {
     REQUIRE(test_tree_isomorphism(res1.tree, res2.tree));
 }
 
-TEST_CASE("test tree of shapes 3D=2D no immersion no padding original space", "[tree_of_shapes]") {
+TEST_CASE("test tree of shapes 3D flat no immersion no padding original space", "[tree_of_shapes]") {
     // A "3D" array which is the same as in previous unit test should 
     // give the same result
     array_nd<float> image{{{1, 1, 1, 1, 1},
@@ -474,7 +474,7 @@ TEST_CASE("test tree of shapes 3D=2D no immersion no padding original space", "[
     REQUIRE((altitudes == ref_altitudes));
 }
 
-TEST_CASE("test tree of shapes 3D=2D default param", "[tree_of_shapes]") {
+TEST_CASE("test tree of shapes 3D flat default param", "[tree_of_shapes]") {
 
     array_nd<float> image{{{1, 1},
                           {1, -2},

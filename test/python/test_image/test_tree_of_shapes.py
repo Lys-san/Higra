@@ -395,9 +395,117 @@ class TestTreeOfShapesImage(unittest.TestCase):
     def test_tree_of_shapes_3d_self_dual(self):
         np.random.seed(42)
         image = np.random.rand(25, 38, 25)
-        # neg_image = -1 * image
 
-        tree1, altitudes1 = hg.component_tree_tree_of_shapes(image)
-        # tree2, altitudes2 = hg.component_tree_tree_of_shapes(neg_image)
+        tree1, altitudes1 = hg.component_tree_tree_of_shapes(image, 'mean', original_size=True, immersion=True)
+        tree2, altitudes2 = hg.component_tree_tree_of_shapes(-image, 'mean', original_size=True, immersion=True)
 
-        # self.assertTrue(hg.test_tree_isomorphism(tree1, tree2))
+        self.assertTrue(hg.test_tree_isomorphism(tree1, tree2))
+
+        tree1, altitudes1 = hg.component_tree_tree_of_shapes(image, 'mean', original_size=True, immersion=False)
+        tree2, altitudes2 = hg.component_tree_tree_of_shapes(-image, 'mean', original_size=True, immersion=False)
+
+        self.assertTrue(hg.test_tree_isomorphism(tree1, tree2))
+
+        tree1, altitudes1 = hg.component_tree_tree_of_shapes(image, 'mean', original_size=False, immersion=False)
+        tree2, altitudes2 = hg.component_tree_tree_of_shapes(-image, 'mean', original_size=False, immersion=False)
+
+        self.assertTrue(hg.test_tree_isomorphism(tree1, tree2))
+
+        tree1, altitudes1 = hg.component_tree_tree_of_shapes(image, 'mean', original_size=False, immersion=False)
+        tree2, altitudes2 = hg.component_tree_tree_of_shapes(-image, 'mean', original_size=False, immersion=False)
+
+        self.assertTrue(hg.test_tree_isomorphism(tree1, tree2))
+
+        tree1, altitudes1 = hg.component_tree_tree_of_shapes(image, 'none', original_size=True, immersion=True)
+        tree2, altitudes2 = hg.component_tree_tree_of_shapes(-image, 'none', original_size=True, immersion=True)
+
+        self.assertTrue(hg.test_tree_isomorphism(tree1, tree2))
+
+        tree1, altitudes1 = hg.component_tree_tree_of_shapes(image, 'none', original_size=True, immersion=False)
+        tree2, altitudes2 = hg.component_tree_tree_of_shapes(-image, 'none', original_size=True, immersion=False)
+
+        self.assertTrue(hg.test_tree_isomorphism(tree1, tree2))
+
+        tree1, altitudes1 = hg.component_tree_tree_of_shapes(image, 'none', original_size=False, immersion=False)
+        tree2, altitudes2 = hg.component_tree_tree_of_shapes(-image, 'none', original_size=False, immersion=False)
+
+        self.assertTrue(hg.test_tree_isomorphism(tree1, tree2))
+
+        tree1, altitudes1 = hg.component_tree_tree_of_shapes(image, 'none', original_size=False, immersion=False)
+        tree2, altitudes2 = hg.component_tree_tree_of_shapes(-image, 'none', original_size=False, immersion=False)
+
+        self.assertTrue(hg.test_tree_isomorphism(tree1, tree2))
+
+
+    def test_tree_of_shapes_3D_flat_no_immersion_no_padding_original_space(self):
+        image = np.asarray((((1, 1, 1, 1, 1),
+                            (1, 0, 1, 2, 1),
+                            (1, 1, 1, 1, 1))), dtype=np.float64)
+
+        tree, altitudes = hg.component_tree_tree_of_shapes(image, 'none', original_size=False, immersion=False)
+        ref_parents = np.asarray((17, 17, 17, 17, 17,
+                                  17, 16, 17, 15, 17,
+                                  17, 17, 17, 17, 17, 17, 17, 17), dtype=np.int64)
+
+        ref_altitudes = np.asarray((1, 1, 1, 1, 1,
+                                    1, 0, 1, 2, 1,
+                                    1, 1, 1, 1, 1, 2, 0, 1), dtype=np.float64)
+        self.assertTrue(np.all(tree.parents() == ref_parents))
+        self.assertTrue(np.allclose(altitudes, ref_altitudes))
+
+        g = hg.CptHierarchy.get_leaf_graph(tree)
+        s = hg.CptGridGraph.get_shape(g)
+        self.assertTrue(s[0] * s[1] == tree.num_leaves())
+
+    def test_tree_of_shapes_3D_flat_default_param(self):
+        image = np.asarray((((1, 1),
+                            (1, -2),
+                            (1, 7))), dtype=np.float64)
+
+        tree, altitudes = hg.component_tree_tree_of_shapes(image, 'mean', True)
+        ref_parents = np.asarray((7, 7,
+                                  7, 6,
+                                  7, 8,
+                                  7, 9, 9, 9), dtype=np.int64)
+
+        ref_altitudes = np.asarray((1., 1.,
+                                    1., -2.,
+                                    1., 7.,
+                                    -2., 1., 7., 1.5), dtype=np.float64)
+        self.assertTrue(np.all(tree.parents() == ref_parents))
+        self.assertTrue(np.allclose(altitudes, ref_altitudes))
+
+    def test_tree_of_shapes_3D_default_param(self):
+        image = np.asarray((((1, 1, 1),
+                             (1, 1, 1),
+                             (1, 1, 1)),
+                             ((1, 1, 1),
+                             (1, -2, 1),
+                             (1, 1, 1)),
+                             ((1, 1, 1),
+                             (1, 1, 1),
+                             (1, 1, 1))))
+
+        tree, altitudes = hg.component_tree_tree_of_shapes(image, "mean", True)
+        ref_parents = np.asarray((28., 28., 28.,
+                        28., 28., 28.,
+                        28., 28., 28.,
+                        28., 28., 28.,
+                        28., 27., 28.,
+                        28., 28., 28.,
+                        28., 28., 28.,
+                        28., 28., 28.,
+                        28., 28., 28., 28., 28))
+
+        ref_altitudes = np.asarray((1., 1. , 1.,
+                          1., 1. , 1.,
+                          1., 1. , 1.,
+                          1., 1. , 1.,
+                          1., -2., 1.,
+                          1., 1. , 1.,
+                          1., 1. , 1.,
+                          1., 1. , 1.,
+                          1., 1. , 1., -2., 1.))
+
+        self.assertTrue(np.all(tree.parents() == ref_parents))
+        self.assertTrue(np.allclose(altitudes, ref_altitudes))

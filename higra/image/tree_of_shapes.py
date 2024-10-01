@@ -78,12 +78,12 @@ def component_tree_tree_of_shapes(image, padding='mean', original_size=True, imm
         size = image.shape
     else:
         if padding == "none":
-            size = (image.shape[0] * 2 - 1, image.shape[1] * 2 - 1)
+            size = [(dim*2 - 1) for dim in image.shape]
         else:
             if immersion:
-                size = ((image.shape[0] + 2) * 2 - 1, (image.shape[1] + 2) * 2 - 1)
+                size = [((dim + 2)*2 - 1) for dim in image.shape]
             else:
-                size = (image.shape[0] + 2, image.shape[1] + 2)
+                size = [(dim + 2) for dim in image.shape]
 
     g = hg.get_4_adjacency_graph(size) if (dim == 2) else hg.get_6_adjacency_graph(size)
     hg.CptHierarchy.link(tree, g)
